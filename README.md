@@ -39,28 +39,35 @@ Some limitations I've identified:
 
 A detailed example of how to use this library is in [example.py](example.py). The quick example below shows how to retrieve usage info.
 
-    # Meter data below can be retrieved via the API - see example.py
-    meter_num = 123456789
-    meter_activation_date = datetime.datetime(2021, 1, 1)
+```python
+# Meter data below can be retrieved via the API - see example.py
+meter_num = 123456789
+meter_activation_date = datetime.datetime(2021, 1, 1)
 
-    async with aiohttp.ClientSession() as client:
-        duke_energy = DukeEnergyClient(email, password, client)
-        duke_energy.select_meter(meter_num, meter_activation_date)
-        usage = duke_energy.get_gateway_usage(datetime.date(2021, 1, 1), datetime.date(2021, 1, 2))
+async with aiohttp.ClientSession() as client:
+    duke_energy = DukeEnergyClient(email, password, client)
+    duke_energy.select_meter(meter_num, meter_activation_date)
+    usage = duke_energy.get_gateway_usage(datetime.date(2021, 1, 1), datetime.date(2021, 1, 2))
+```
 
 To run the example, you might need to install extra dependencies.
 
-    pip install .[example]
-
+```bash
+pip install .[example]
+```
 
 ### Installation
 
-    pip install pyduke-energy
+```bash
+pip install pyduke-energy
+```
 
 ### Development
 
 Getting this running is pretty straightforward if you want to contribute.
 
-    virtualenv venv
-    source venv/bin/activate
-    pip install --editable .  # --editable is optional
+```bash
+virtualenv venv
+source venv/bin/activate
+pip install --editable .  # --editable is optional
+```
