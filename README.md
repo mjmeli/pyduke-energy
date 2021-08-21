@@ -6,6 +6,8 @@ Designed to work with Home Assistant. Unlikely to ever be fully implemented. The
 
 **NOTE** This API is not official and so this library could stop working at any time without warning. There are multiple other libraries on GitHub that are dead already due to this.
 
+**NOTE2** This repo is a WIP as I'm still in the experimental phase. If all works out all, I will clean this up.
+
 ## Example Usage
 
 A detailed example of how to use this library is in [example.py](example.py). The quick example below shows how to retrieve usage info.
