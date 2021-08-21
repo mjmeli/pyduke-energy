@@ -52,6 +52,15 @@ async def main() -> None:
             gw_usage = await duke_energy.get_gateway_usage(datetime.now() + timedelta(hours=-1), datetime.now() + timedelta(hours=1))
             _LOGGER.info(jsonpickle.encode(gw_usage, indent=2, unpicklable=False))
 
+            _LOGGER.info("Getting gateway usage for today:")
+            today = datetime.today()
+            today_start = datetime(today.year, today.month, today.day)
+            today_end = today_start + timedelta(days=1)
+            gw_usage = await duke_energy.get_gateway_usage(today_start, today_end)
+            today_usage = sum(x.usage for x in gw_usage)
+            _LOGGER.info(f"Requesting between {today_start} and {today_end}")
+            _LOGGER.info(f"From {gw_usage[0].datetime} to {gw_usage[-1].datetime}: {today_usage} ({len(gw_usage)} measurements)")
+
     except DukeEnergyError as err:
         _LOGGER.info(err)
 
