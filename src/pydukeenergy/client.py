@@ -135,6 +135,9 @@ class DukeEnergyClient:
         return measurements
 
     async def _oauth_login(self) -> None:
+        """Hits the OAuth login endpoint to generate a new access token"""
+        _LOGGER.debug("Getting new OAuth auth")
+
         endpoint = "auth/oauth2/token"
         headers = { "Authorization": "Basic UzdmNXFQR2MwcnpVZkJmcVNPak9ycGczZWtSZ3ZHSng6bW1nS2pyY1RQRHptOERtVw==" } # hard-coded from Android app
         request = {
@@ -147,7 +150,7 @@ class DukeEnergyClient:
         self._oauth_auth_info.internal_user_id = resp.get("cdp_internal_user_id")
 
     async def _get_oauth_headers(self) -> dict:
-        """Get the auth headers for OAuth scoped actions"""
+        """Get the auth headers for OAuth scoped actions - logs in if new access token is needed"""
         # Get a new access token if it has expired
         if self._oauth_auth_info.needs_new_access_token():
             await self._oauth_login()
@@ -158,6 +161,8 @@ class DukeEnergyClient:
     async def _gateway_login(self) -> None:
         if self._gateway_auth_info.meter_id is None:
             raise InputError("Gateway needs to be selected before calling gateway functions")
+
+        _LOGGER.debug("Getting new gateway auth")
 
         endpoint = "smartmeter/v1/auth"
         headers = await self._get_oauth_headers()
@@ -170,7 +175,7 @@ class DukeEnergyClient:
         self._gateway_auth_info.id_token = resp.get("id_token")
 
     async def _get_gateway_auth_headers(self) -> dict:
-        """Get the auth headers for gateway scoped actions"""
+        """Get the auth headers for gateway scoped actions - logs in if new access token is needed"""
         # Get a new access token if it has expired
         if self._gateway_auth_info.needs_new_access_token():
             await self._gateway_login()
@@ -179,7 +184,7 @@ class DukeEnergyClient:
             "de-iot-id-token": self._gateway_auth_info.id_token
         }
 
-    async def _async_request(self, method: str, base_url: str, endpoint: str,headers: Optional[dict] = None, params: Optional[dict] = None, data: Optional[dict] = None, json: Optional[dict] = None) -> dict:
+    async def _async_request(self, method: str, base_url: str, endpoint: str, headers: Optional[dict] = None, params: Optional[dict] = None, data: Optional[dict] = None, json: Optional[dict] = None) -> dict:
         """Make a request against the Duke Energy API."""
 
         use_running_session = self._session and not self._session.closed

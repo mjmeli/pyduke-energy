@@ -1,7 +1,5 @@
 """Type Defintions"""
 
-from datetime import timezone
-
 """An account as provided by account-list endpoint"""
 from pydukeenergy.utils import (
     str_to_datetime,
