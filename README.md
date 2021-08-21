@@ -29,7 +29,7 @@ It is possible to query *yesterday's* energy usage without a gateway; however, I
 Some limitations I've identified:
 
 * Real-time power usage is not easily available. It is retrieved in the app via an MQTT websockets connection. I've been unable to figure out how to connect myself.
-* Non-real-time Energy usage data is down to the minute, but will only be reported to the most recent hour. e.g. if it is 4:35pm, you will only have usage data through 4:00pm. At 5:00pm, you will get all the usage data from 4-5.
+* Non-real-time Energy usage data is down to the minute, but doesn't appear to be reported every minute. It seems common that there are delays of up to an hour. Once the readings come in, all the missing minutes are available. 
 
 ## Library
 
