@@ -1,4 +1,4 @@
-# pyDukeEnergy
+# pyDuke-Energy
 
 Python3 wrapper for the unofficial Duke Energy API.
 
@@ -19,9 +19,13 @@ A detailed example of how to use this library is in [example.py](example.py). Th
         duke_energy.select_meter(meter_num, meter_activation_date)
         usage = duke_energy.get_gateway_usage(datetime.date(2021, 1, 1), datetime.date(2021, 1, 2))
 
+To run the example, you might need to install extra dependencies.
+
+    pip install .[example]
+
 ## Installation
 
-TODO
+    pip install pyduke-energy
 
 ## Development
 
@@ -29,4 +33,4 @@ Getting this running is pretty straightforward if you want to contribute.
 
     virtualenv venv
     source venv/bin/activate
-    pip install --editable .    # --editable is optional
+    pip install --editable .  # --editable is optional

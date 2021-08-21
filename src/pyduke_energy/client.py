@@ -9,23 +9,23 @@ from urllib.parse import urljoin
 from aiohttp import ClientSession, ClientTimeout, FormData
 from aiohttp.client_exceptions import ClientError
 
-from pydukeenergy.const import (
+from pyduke_energy.const import (
     CUST_API_BASE_URL,
     CUST_PILOT_API_BASE_URL,
     IOT_API_BASE_URL,
     DEFAULT_TIMEOUT
 )
-from pydukeenergy.types import (
+from pyduke_energy.types import (
     Account,
     AccountDetails,
     MeterInfo,
     GatewayStatus,
     UsageMeasurement
 )
-from pydukeenergy.utils import (
+from pyduke_energy.utils import (
     date_to_utc_timestamp
 )
-from pydukeenergy.errors import (
+from pyduke_energy.errors import (
     RequestError,
     InputError
 )
@@ -98,12 +98,8 @@ class DukeEnergyClient:
         resp = await self._async_request("GET", CUST_API_BASE_URL, endpoint, headers=headers, params=params)
         return AccountDetails(resp)
 
-    def select_meter(self, meter: MeterInfo) -> None:
-        """Selects which meter wil be used for gateway API calls"""
-        self.select_meter(meter.serial_num, meter.agreement_active_date)
-
     def select_meter(self, meter_id: str, activation_date: date) -> None:
-        """Selects which meter wil be used for gateway API calls"""
+        """Selects which meter will be used for gateway API calls"""
         self._gateway_auth_info.meter_id = meter_id
         self._gateway_auth_info.activation_date = activation_date
         self._gateway_auth_info.clear_access_token() # resets

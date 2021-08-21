@@ -1,7 +1,7 @@
 """Type Defintions"""
 
 """An account as provided by account-list endpoint"""
-from pydukeenergy.utils import (
+from pyduke_energy.utils import (
     str_to_datetime,
     str_to_date,
     timestamp_to_datetime

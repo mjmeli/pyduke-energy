@@ -6,7 +6,7 @@ import logging
 import jsonpickle
 from datetime import datetime, timedelta
 
-from pydukeenergy import DukeEnergyClient, DukeEnergyError
+from pyduke_energy import DukeEnergyClient, DukeEnergyError
 
 _LOGGER = logging.getLogger(__name__)
 
