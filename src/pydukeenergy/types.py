@@ -79,5 +79,6 @@ class GatewayStatus:
 """Usage reading from the usageByHour endpoint"""
 class UsageMeasurement:
     def __init__(self, data: dict):
-        self.time = timestamp_to_datetime(data.get("t") / 1000)
+        self.timestamp = data.get("t")
+        self.datetime = timestamp_to_datetime(data.get("t") / 1000)
         self.usage = data.get("i") # i works for now

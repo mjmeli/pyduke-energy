@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta, date, timezone
+from os import access
 from typing import Optional
 from urllib.parse import urljoin
 from aiohttp import ClientSession, ClientTimeout, FormData
@@ -25,20 +26,39 @@ from pydukeenergy.utils import (
     date_to_utc_timestamp
 )
 from pydukeenergy.errors import (
-    DukeEnergyError,
     RequestError,
     InputError
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-class _GatewayInfo:
-    def __init__(self, meter_id: str, activation_date: date, access_token: str, id_token: str, expires: datetime):
-        self.meter_id = meter_id
-        self.activation_date = activation_date
+class _BaseAuthInfo:
+    def __init__(self):
+        self.access_token: Optional[str] = None
+        self.expires: Optional[datetime] = None
+
+    def needs_new_access_token(self):
+        return self.access_token is None or self.expires is None or datetime.now() > self.expires
+
+    def set_new_access_token(self, access_token, expires):
         self.access_token = access_token
-        self.id_token = id_token
-        self.expires = expires
+        self.expires = datetime.now() + timedelta(seconds=int(expires))
+
+    def clear_access_token(self):
+        self.access_token = None
+        self.expires = None
+
+class _OAuthAuthInfo(_BaseAuthInfo):
+    def __init__(self):
+        super().__init__()
+        self.internal_user_id: Optional[str] = None
+
+class _GatewayAuthInfo(_BaseAuthInfo):
+    def __init__(self):
+        super().__init__()
+        self.meter_id: Optional[str] = None
+        self.activation_date: Optional[datetime] = None
+        self.id_token: Optional[str] = None
 
 class DukeEnergyClient:
 
@@ -53,17 +73,15 @@ class DukeEnergyClient:
         self._session = session
 
         # Authentication
-        self._oauth_access_token: Optional[str] = None
-        self._oauth_expires = datetime.min
-        self._internal_user_id: Optional[str] = None
-        self._gateway_info: Optional[_GatewayInfo] = None
+        self._oauth_auth_info = _OAuthAuthInfo()
+        self._gateway_auth_info = _GatewayAuthInfo()
 
     async def get_account_list(self) -> 'list[Account]':
         endpoint = "auth/account-list"
         headers = await self._get_oauth_headers()
         params = {
             "email": self._email,
-            "internalUserID": self._internal_user_id
+            "internalUserID": self._oauth_auth_info.internal_user_id
         }
         resp = await self._async_request("GET", CUST_API_BASE_URL, endpoint, headers=headers, params=params)
         account_list = resp.get("accounts")
@@ -86,12 +104,9 @@ class DukeEnergyClient:
 
     def select_meter(self, meter_id: str, activation_date: date) -> None:
         """Selects which meter wil be used for gateway API calls"""
-        if (self._gateway_info is not None and self._gateway_info.meter_id == meter_id):
-            # Don't update so we keep the same auth credentails
-            return
-
-        # Initialize with no credentials
-        self._gateway_info = _GatewayInfo(meter_id, activation_date, None, None, datetime.min)
+        self._gateway_auth_info.meter_id = meter_id
+        self._gateway_auth_info.activation_date = activation_date
+        self._gateway_auth_info.clear_access_token() # resets
 
     async def get_gateway_status(self) -> GatewayStatus:
         endpoint = "gw/gateways/status"
@@ -99,9 +114,8 @@ class DukeEnergyClient:
         resp = await self._async_request("GET", IOT_API_BASE_URL, endpoint, headers=headers)
         return GatewayStatus(resp)
 
-    async def get_gateway_usage(self, range_start: datetime, range_end: datetime) -> None:
+    async def get_gateway_usage(self, range_start: datetime, range_end: datetime) -> 'list[UsageMeasurement]':
         """Gets gateway usage for a time window."""
-
         if range_start > range_end:
             raise InputError("Start date must be before end date")
 
@@ -109,7 +123,7 @@ class DukeEnergyClient:
         headers = await self._get_gateway_auth_headers()
         dt_format = "%Y-%m-%dT%H:00" # the API ignores minutes, seconds, timezone
         params = {
-            "startHourDt": range_start.astimezone(timezone.utc).strftime(dt_format),
+            "startHourDt": range_start.astimezone(timezone.utc).strftime(dt_format), # API expects dates to be UTC
             "endHourDt": range_end.astimezone(timezone.utc).strftime(dt_format)
         }
         resp = await self._async_request("GET", IOT_API_BASE_URL, endpoint, headers=headers, params=params)
@@ -117,7 +131,7 @@ class DukeEnergyClient:
         # Format is a list of objects containing the measurements, one object per hour. Here we combine all.
         raw_measurements = [mn for d in resp for mn in d.get("mn")]
         measurements = [UsageMeasurement(mn) for mn in raw_measurements]
-        measurements.sort(key=lambda x: x.time)
+        measurements.sort(key=lambda x: x.timestamp)
         return measurements
 
     async def _oauth_login(self) -> None:
@@ -129,41 +143,40 @@ class DukeEnergyClient:
             "password": self._password
         }
         resp = await self._async_request("POST", CUST_API_BASE_URL, endpoint, headers=headers, data=FormData(request))
-        self._oauth_access_token = resp.get("access_token")
-        self._oauth_expires = datetime.now() + timedelta(seconds=int(resp.get("expires_in")))
-        self._internal_user_id = resp.get("cdp_internal_user_id")
+        self._oauth_auth_info.set_new_access_token(resp.get("access_token"), resp.get("expires_in"))
+        self._oauth_auth_info.internal_user_id = resp.get("cdp_internal_user_id")
 
     async def _get_oauth_headers(self) -> dict:
-        """Need a new access token?"""
-        if (not self._oauth_access_token or datetime.now() > self._oauth_expires):
+        """Get the auth headers for OAuth scoped actions"""
+        # Get a new access token if it has expired
+        if self._oauth_auth_info.needs_new_access_token():
             await self._oauth_login()
         return { 
-            "Authorization": f"Bearer {self._oauth_access_token}"
+            "Authorization": f"Bearer {self._oauth_auth_info.access_token}"
         }
 
     async def _gateway_login(self) -> None:
-        if self._gateway_info is None:
+        if self._gateway_auth_info.meter_id is None:
             raise InputError("Gateway needs to be selected before calling gateway functions")
 
         endpoint = "smartmeter/v1/auth"
         headers = await self._get_oauth_headers()
         request = {
-            "meterId": self._gateway_info.meter_id,
-            "activationDt": int(date_to_utc_timestamp(self._gateway_info.activation_date)) * 1000 # ms timestamp
+            "meterId": self._gateway_auth_info.meter_id,
+            "activationDt": int(date_to_utc_timestamp(self._gateway_auth_info.activation_date)) * 1000 # ms timestamp
         }
-        print(request)
         resp = await self._async_request("POST", CUST_PILOT_API_BASE_URL, endpoint, headers=headers, data=FormData(request))
-        self._gateway_info.access_token = resp.get("access_token")
-        self._gateway_info.expires = datetime.now() + timedelta(seconds=int(resp.get("expires_in")))
-        self._gateway_info.id_token = resp.get("id_token")
+        self._gateway_auth_info.set_new_access_token(resp.get("access_token"), resp.get("expires_in"))
+        self._gateway_auth_info.id_token = resp.get("id_token")
 
     async def _get_gateway_auth_headers(self) -> dict:
-        """Need a new access token?"""
-        if (not self._gateway_info.access_token or datetime.now() > self._gateway_info.expires):
+        """Get the auth headers for gateway scoped actions"""
+        # Get a new access token if it has expired
+        if self._gateway_auth_info.needs_new_access_token():
             await self._gateway_login()
         return { 
-            "Authorization": f"Bearer {self._gateway_info.access_token}",
-            "de-iot-id-token": self._gateway_info.id_token
+            "Authorization": f"Bearer {self._gateway_auth_info.access_token}",
+            "de-iot-id-token": self._gateway_auth_info.id_token
         }
 
     async def _async_request(self, method: str, base_url: str, endpoint: str,headers: Optional[dict] = None, params: Optional[dict] = None, data: Optional[dict] = None, json: Optional[dict] = None) -> dict:
