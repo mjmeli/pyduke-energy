@@ -4,7 +4,8 @@ import asyncio
 import aiohttp
 import logging
 import jsonpickle
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import dateutil
 
 from pyduke_energy import DukeEnergyClient, DukeEnergyError
 
@@ -12,6 +13,9 @@ _LOGGER = logging.getLogger(__name__)
 
 PYDUKEENERGY_TEST_EMAIL = "PYDUKEENERGY_TEST_EMAIL"
 PYDUKEENERGY_TEST_PASS = "PYDUKEENERGY_TEST_PASS"
+
+tz_string = datetime.now(timezone.utc).astimezone().tzname()
+tz = dateutil.tz.gettz(tz_string)
 
 async def main() -> None:
     logging.basicConfig(level=logging.DEBUG)
@@ -59,7 +63,7 @@ async def main() -> None:
             gw_usage = await duke_energy.get_gateway_usage(today_start, today_end)
             today_usage = sum(x.usage for x in gw_usage)
             _LOGGER.info(f"Requesting between {today_start} and {today_end}")
-            _LOGGER.info(f"From {gw_usage[0].datetime} to {gw_usage[-1].datetime}: {today_usage} ({len(gw_usage)} measurements)")
+            _LOGGER.info(f"From {gw_usage[0].datetime_utc.astimezone(tz)} to {gw_usage[-1].datetime_utc.astimezone(tz)}: {today_usage} ({len(gw_usage)} measurements)")
 
     except DukeEnergyError as err:
         _LOGGER.info(err)

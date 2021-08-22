@@ -13,5 +13,5 @@ def date_to_datetime(dt: date):
 def date_to_utc_timestamp(dt: date):
     return date_to_datetime(dt).replace(tzinfo=timezone.utc).timestamp()
 
-def timestamp_to_datetime(ts: int):
-    return datetime.fromtimestamp(ts)
+def utc_timestamp_to_datetime(ts: int):
+    return datetime.utcfromtimestamp(ts).replace(tzinfo=timezone.utc)

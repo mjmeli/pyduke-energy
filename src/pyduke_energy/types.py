@@ -4,7 +4,7 @@
 from pyduke_energy.utils import (
     str_to_datetime,
     str_to_date,
-    timestamp_to_datetime
+    utc_timestamp_to_datetime
 )
 
 class Account:
@@ -78,5 +78,5 @@ class GatewayStatus:
 class UsageMeasurement:
     def __init__(self, data: dict):
         self.timestamp = data.get("t")
-        self.datetime = timestamp_to_datetime(data.get("t") / 1000)
+        self.datetime_utc = utc_timestamp_to_datetime(data.get("t") / 1000)
         self.usage = data.get("i") # i works for now
