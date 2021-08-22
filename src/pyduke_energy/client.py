@@ -117,11 +117,16 @@ class DukeEnergyClient:
 
         endpoint = "smartmeter/usageByHour"
         headers = await self._get_gateway_auth_headers()
-        dt_format = "%Y-%m-%dT%H:00" # the API ignores minutes, seconds, timezone
+        
+        dt_format = "%Y-%m-%dT%H:%M" # the API actually ignores minutes, seconds, timezone
+        start_hour = range_start.astimezone(timezone.utc).strftime(dt_format) # API expects dates to be UTC
+        end_hour = range_end.astimezone(timezone.utc).strftime(dt_format)
         params = {
-            "startHourDt": range_start.astimezone(timezone.utc).strftime(dt_format), # API expects dates to be UTC
-            "endHourDt": range_end.astimezone(timezone.utc).strftime(dt_format)
+            "startHourDt": start_hour,
+            "endHourDt": end_hour
         }
+        _LOGGER.debug(f"Requesting usage between {start_hour} UTC and {end_hour} UTC")
+
         resp = await self._async_request("GET", IOT_API_BASE_URL, endpoint, headers=headers, params=params)
 
         # Format is a list of objects containing the measurements, one object per hour. Here we combine all.
