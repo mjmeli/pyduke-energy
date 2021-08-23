@@ -1,13 +1,13 @@
 """Client for interacting with the Duke Energy API"""
 
-import asyncio
-import logging
-from datetime import datetime, timedelta, date, timezone
-from os import access
-from typing import Optional
-from urllib.parse import urljoin
 from aiohttp import ClientSession, ClientTimeout, FormData
 from aiohttp.client_exceptions import ClientError
+import asyncio
+from datetime import datetime, timedelta, date, timezone
+from functools import singledispatchmethod
+import logging
+from typing import Optional
+from urllib.parse import urljoin
 
 from pyduke_energy.const import (
     CUST_API_BASE_URL,
@@ -87,7 +87,10 @@ class DukeEnergyClient:
         account_list = resp.get("accounts")
         return [Account(acc) for acc in account_list]
 
-    async def get_account_details(self, src_acct_id: str, src_sys_cd: str) -> AccountDetails:
+    async def get_account_details(self, account: Account) -> AccountDetails:
+        return await self._get_account_details(account.src_sys_cd, account.src_acct_id, account.src_acct_id_2, account.bp_number)
+
+    async def _get_account_details(self, src_sys_cd: str, src_acct_id: str, src_acct_id_2: Optional[str], bp_number: Optional[str]) -> AccountDetails:
         endpoint = "auth/account-details"
         headers = await self._get_oauth_headers()
         params = {
@@ -95,10 +98,18 @@ class DukeEnergyClient:
             "srcSysCd": src_sys_cd,
             "srcAcctId": src_acct_id
         }
+        if src_acct_id_2:
+            params["srcAcctId2"] = src_acct_id_2
+        if bp_number:
+            params["bpNumber"] = bp_number
         resp = await self._async_request("GET", CUST_API_BASE_URL, endpoint, headers=headers, params=params)
         return AccountDetails(resp)
 
-    def select_meter(self, meter_id: str, activation_date: date) -> None:
+    def select_meter(self, meter: MeterInfo) -> None:
+        """Selects which meter will be used for gateway API calls using the MeterInfo class"""
+        self._select_meter(meter.serial_num, meter.agreement_active_date)
+
+    def _select_meter(self, meter_id: str, activation_date: date) -> None:
         """Selects which meter will be used for gateway API calls"""
         self._gateway_auth_info.meter_id = meter_id
         self._gateway_auth_info.activation_date = activation_date

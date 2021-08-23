@@ -40,13 +40,13 @@ async def main() -> None:
             account = account_list[0]
             
             _LOGGER.info("Getting account details:")
-            account_details = await duke_energy.get_account_details(account.src_acct_id, account.src_sys_cd)
+            account_details = await duke_energy.get_account_details(account)
             _LOGGER.info(jsonpickle.encode(account_details, indent=2, unpicklable=False))
 
             meter = account_details.meter_infos[0]
 
             _LOGGER.info(f"Selecting meter (not an API call) {meter.serial_num}")
-            duke_energy.select_meter(meter.serial_num, meter.agreement_active_date)
+            duke_energy.select_meter(meter)
             
             _LOGGER.info("Getting gateway status:")
             gw_status = await duke_energy.get_gateway_status()
