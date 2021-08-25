@@ -3,9 +3,9 @@
 [![PyPi Project][pypi-shield]][pypi]
 [![GitHub Build][build-shield]][build]
 [![GitHub Activity][commits-shield]][commits]
-[![Project Maintenance][maintenance-shield]][user_profile]
-
 [![License][license-shield]](LICENSE)
+
+[![Project Maintenance][maintenance-shield]][user_profile]
 [![GitHub Top Language][language-shield]][language]
 [![Black][black-shield]][black]
 
