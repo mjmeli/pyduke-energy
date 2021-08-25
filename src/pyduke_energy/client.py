@@ -4,7 +4,6 @@ from aiohttp import ClientSession, ClientTimeout, FormData
 from aiohttp.client_exceptions import ClientError
 import asyncio
 from datetime import datetime, timedelta, date, timezone
-from functools import singledispatchmethod
 import logging
 from typing import Optional
 from urllib.parse import urljoin

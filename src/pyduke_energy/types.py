@@ -1,8 +1,9 @@
 """Type Defintions"""
 
-"""An account as provided by account-list endpoint"""
 from datetime import datetime, date
 from pyduke_energy.utils import str_to_datetime, str_to_date, utc_timestamp_to_datetime
+
+"""An account as provided by account-list endpoint"""
 
 
 class Account:
