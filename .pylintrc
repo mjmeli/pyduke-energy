@@ -1,0 +1,12 @@
+[MASTER]
+
+disable=
+  too-many-instance-attributes,
+  too-many-lines,
+  too-many-arguments,
+
+good-names=
+  i,j,k,ex,Run,_, # defaults
+  id
+
+max-line-length=135
