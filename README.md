@@ -1,10 +1,17 @@
 # pyDuke-Energy
 
+[![PyPi Project][pypi-shield]][pypi]
+[![GitHub Build][build-shield]][build]
+[![GitHub Activity][commits-shield]][commits]
+[![Project Maintenance][maintenance-shield]][user_profile]
+
+[![License][license-shield]](LICENSE)
+[![GitHub Top Language][language-shield]][language]
+[![Black][black-shield]][black]
+
 Python3 wrapper for the unofficial Duke Energy API.
 
 Designed to work with Home Assistant. Unlikely to ever be fully implemented. The primary goal is to expose Duke Energy Gateway usage information.
-
-This repo is a WIP as I'm still in the experimental phase. If all works out all, I will clean this up.
 
 ## Before You Begin
 
@@ -22,16 +29,24 @@ Along those same lines, **please do not abuse their API**.
 
 In order to call the gateway related functions, including getting energy usage, you will need to have a Duke Energy Gateway. This is currently available via a pilot program.
 
-It is possible to query *yesterday's* energy usage without a gateway; however, I have not implemented that as I did not find it useful.
+It is possible to query _yesterday's_ energy usage without a gateway; however, I have not implemented that as I did not find it useful.
 
 ### Limitations
 
 Some limitations I've identified:
 
-* Real-time power usage is not easily available. It is retrieved in the app via an MQTT websockets connection. I've been unable to figure out how to connect myself.
-* Non-real-time Energy usage data is down to the minute, but doesn't appear to be reported every minute and I see delays up to 15 minutes. My best guess is that they cache the minute-by-minute data for 15 minutes. This is true in the app as well.
+- Real-time power usage is not easily available. It is retrieved in the app via an MQTT websockets connection. I've been unable to figure out how to connect myself.
+- Non-real-time Energy usage data is down to the minute, but doesn't appear to be reported every minute and I see delays up to 15 minutes. My best guess is that the gateway only sends data to Duke Energy every 15 minutes. This is a limitation in the app as well.
 
-## Library
+## Usage
+
+### Installation
+
+The latest version is available on PyPi.
+
+```bash
+pip install pyduke-energy
+```
 
 ### Example Usage
 
@@ -44,28 +59,72 @@ meter_activation_date = datetime.datetime(2021, 1, 1)
 
 async with aiohttp.ClientSession() as client:
     duke_energy = DukeEnergyClient(email, password, client)
-    duke_energy.select_meter(meter_num, meter_activation_date)
+    duke_energy.select_meter_by_id(meter_num, meter_activation_date) # NB: can also use MeterInfo from API with select_meter()
     usage = duke_energy.get_gateway_usage(datetime.date(2021, 1, 1), datetime.date(2021, 1, 2))
 ```
 
-To run the example, you might need to install extra dependencies.
+#### Running Example
+
+If you want to run the example, you might need to install extra dependencies.
 
 ```bash
 pip install .[example]
+python example.py
 ```
 
-### Installation
+## Development
 
-```bash
-pip install pyduke-energy
-```
+### Environment Setup
 
-### Development
+#### Dev Container
 
-Getting this running is pretty straightforward if you want to contribute.
+The preferred method of development is using the Visual Studio Code devcontainer, which will handle setting up your environment including all dependencies.
+
+1. Open repo in VS Code (e.g. `code .` from repo root)
+2. Re-open in container when the pop-up appears in VS Code
+3. Wait for the container to build
+4. Done!
+
+#### Manual Installation
+
+You can also develop outside of a dev container if desired. The example below uses a `virtualenv` which is optional but recommended.
 
 ```bash
 virtualenv venv
 source venv/bin/activate
-pip install --editable .  # --editable is optional
+pip install -e .[example,tests]
 ```
+
+### Testing
+
+The test command will run the test suite and also run linting against all source files.
+
+```bash
+tox
+```
+
+To run just the tests:
+
+```bash
+tox -e py39
+```
+
+To run just the linting:
+
+```bash
+tox -e lint
+```
+
+[black]: https://github.com/psf/black
+[black-shield]: https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge
+[commits-shield]: https://img.shields.io/github/commit-activity/y/mjmeli/pyduke-energy.svg?style=for-the-badge
+[commits]: https://github.com/mjmeli/pyduke-energy/commits/main
+[license-shield]: https://img.shields.io/github/license/mjmeli/pyduke-energy.svg?style=for-the-badge
+[maintenance-shield]: https://img.shields.io/badge/maintainer-%40mjmeli-blue.svg?style=for-the-badge
+[pypi-shield]: https://img.shields.io/pypi/v/pyduke-energy?style=for-the-badge
+[pypi]: https://pypi.org/project/pyduke-energy/
+[build-shield]: https://img.shields.io/github/workflow/status/mjmeli/pyduke-energy/Linting?style=for-the-badge
+[build]: https://github.com/mjmeli/ha-duke-energy-gateway/actions/workflows/tests.yaml
+[language-shield]: https://img.shields.io/github/languages/top/mjmeli/pyduke-energy?style=for-the-badge
+[language]: https://github.com/mjmeli/ha-duke-energy-gateway/search?l=python
+[user_profile]: https://github.com/mjmeli

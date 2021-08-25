@@ -128,9 +128,9 @@ class DukeEnergyClient:
 
     def select_meter(self, meter: MeterInfo) -> None:
         """Select which meter will be used for gateway API calls."""
-        self._select_meter(meter.serial_num, meter.agreement_active_date)
+        self.select_meter_by_id(meter.serial_num, meter.agreement_active_date)
 
-    def _select_meter(self, meter_id: str, activation_date: date) -> None:
+    def select_meter_by_id(self, meter_id: str, activation_date: date) -> None:
         """Select which meter will be used for gateway API calls."""
         self._gateway_auth_info.meter_id = meter_id
         self._gateway_auth_info.activation_date = activation_date
