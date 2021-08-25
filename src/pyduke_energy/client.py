@@ -1,4 +1,4 @@
-"""Client for interacting with the Duke Energy API"""
+"""Client for interacting with the Duke Energy API."""
 
 import asyncio
 from datetime import datetime, timedelta, date, timezone
@@ -33,7 +33,7 @@ class _BaseAuthInfo:
         self.expires: Optional[datetime] = None
 
     def needs_new_access_token(self):
-        """Checks if a new access token is needed"""
+        """Check if a new access token is needed."""
         return (
             self.access_token is None
             or self.expires is None
@@ -41,12 +41,12 @@ class _BaseAuthInfo:
         )
 
     def set_new_access_token(self, access_token, expires):
-        """Sets the new access token and expiration date"""
+        """Set the new access token and expiration date."""
         self.access_token = access_token
         self.expires = datetime.now() + timedelta(seconds=int(expires))
 
     def clear_access_token(self):
-        """Clears an existing access token"""
+        """Clear an existing access token."""
         self.access_token = None
         self.expires = None
 
@@ -130,13 +130,13 @@ class DukeEnergyClient:
         self._select_meter(meter.serial_num, meter.agreement_active_date)
 
     def _select_meter(self, meter_id: str, activation_date: date) -> None:
-        """Selects which meter will be used for gateway API calls."""
+        """Select which meter will be used for gateway API calls."""
         self._gateway_auth_info.meter_id = meter_id
         self._gateway_auth_info.activation_date = activation_date
         self._gateway_auth_info.clear_access_token()  # resets
 
     async def get_gateway_status(self) -> GatewayStatus:
-        """Gets the status of the selected gateway."""
+        """Get the status of the selected gateway."""
         endpoint = "gw/gateways/status"
         headers = await self._get_gateway_auth_headers()
         resp = await self._async_request(
@@ -147,7 +147,7 @@ class DukeEnergyClient:
     async def get_gateway_usage(
         self, range_start: datetime, range_end: datetime
     ) -> "list[UsageMeasurement]":
-        """Gets gateway usage for a time window."""
+        """Get gateway usage for a time window."""
         if range_start > range_end:
             raise InputError("Start date must be before end date")
 
@@ -177,7 +177,7 @@ class DukeEnergyClient:
         return measurements
 
     async def _oauth_login(self) -> None:
-        """Hits the OAuth login endpoint to generate a new access token."""
+        """Hit the OAuth login endpoint to generate a new access token."""
         _LOGGER.debug("Getting new OAuth auth")
 
         endpoint = "auth/oauth2/token"

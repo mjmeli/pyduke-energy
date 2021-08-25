@@ -1,4 +1,4 @@
-"""Error Types"""
+"""Error Types."""
 
 
 class DukeEnergyError(Exception):
@@ -6,8 +6,8 @@ class DukeEnergyError(Exception):
 
 
 class RequestError(DukeEnergyError):
-    """Error for request issues"""
+    """Error for request issues."""
 
 
 class InputError(DukeEnergyError):
-    """Error for input issues"""
+    """Error for input issues."""
