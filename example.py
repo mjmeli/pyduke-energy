@@ -1,11 +1,16 @@
-import os
-import getpass
+"""Example usage of pyduke-energy."""
+
+# pylint: skip-file
+
 import asyncio
-import aiohttp
-import logging
-import jsonpickle
 from datetime import datetime, timedelta, timezone
+import getpass
+import logging
+import os
+
+import aiohttp
 import dateutil
+import jsonpickle
 
 from pyduke_energy.client import DukeEnergyClient
 from pyduke_energy.errors import DukeEnergyError
@@ -19,7 +24,8 @@ tz_string = datetime.now(timezone.utc).astimezone().tzname()
 tz = dateutil.tz.gettz(tz_string)
 
 
-async def main() -> None:
+async def main() -> None:  # noqa
+
     logging.basicConfig(level=logging.DEBUG)
 
     # Pull email/password into environment variables
@@ -27,7 +33,7 @@ async def main() -> None:
     password = os.environ.get(PYDUKEENERGY_TEST_PASS)
     if email is None or password is None:
         print(
-            f"Enter your email and password in environment variables. To avoid typing them in, you can put them into environment variables {PYDUKEENERGY_TEST_EMAIL} and {PYDUKEENERGY_TEST_PASS}."
+            "Enter your email and password in environment variables. To avoid typing them in, you can put them into environment variables {PYDUKEENERGY_TEST_EMAIL} and {PYDUKEENERGY_TEST_PASS}."
         )
         email = input("Email: ")
         password = getpass.getpass("Password: ")

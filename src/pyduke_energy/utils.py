@@ -1,6 +1,7 @@
 """Utility functions."""
 
 from datetime import date, datetime, timezone
+
 from dateutil import parser
 
 

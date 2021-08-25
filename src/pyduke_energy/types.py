@@ -1,8 +1,9 @@
 """Type Defintions."""
 
 from dataclasses import dataclass
-from datetime import datetime, date
-from pyduke_energy.utils import str_to_datetime, str_to_date, utc_timestamp_to_datetime
+from datetime import date, datetime
+
+from pyduke_energy.utils import str_to_date, str_to_datetime, utc_timestamp_to_datetime
 
 
 @dataclass
