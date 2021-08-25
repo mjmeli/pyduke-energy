@@ -124,7 +124,7 @@ tox -e lint
 [pypi-shield]: https://img.shields.io/pypi/v/pyduke-energy?style=for-the-badge
 [pypi]: https://pypi.org/project/pyduke-energy/
 [build-shield]: https://img.shields.io/github/workflow/status/mjmeli/pyduke-energy/Tests?style=for-the-badge
-[build]: https://github.com/mjmeli/ha-duke-energy-gateway/actions/workflows/tests.yaml
+[build]: https://github.com/mjmeli/pyduke-energy/actions/workflows/tests.yaml
 [language-shield]: https://img.shields.io/github/languages/top/mjmeli/pyduke-energy?style=for-the-badge
 [language]: https://github.com/mjmeli/ha-duke-energy-gateway/search?l=python
 [user_profile]: https://github.com/mjmeli
