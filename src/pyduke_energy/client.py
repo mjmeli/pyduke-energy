@@ -1,12 +1,12 @@
 """Client for interacting with the Duke Energy API"""
 
-from aiohttp import ClientSession, ClientTimeout, FormData
-from aiohttp.client_exceptions import ClientError
 import asyncio
 from datetime import datetime, timedelta, date, timezone
 import logging
-from typing import Optional
+from typing import Optional, List
 from urllib.parse import urljoin
+from aiohttp import ClientSession, ClientTimeout, FormData
+from aiohttp.client_exceptions import ClientError
 
 from pyduke_energy.const import (
     CUST_API_BASE_URL,
@@ -33,6 +33,7 @@ class _BaseAuthInfo:
         self.expires: Optional[datetime] = None
 
     def needs_new_access_token(self):
+        """Checks if a new access token is needed"""
         return (
             self.access_token is None
             or self.expires is None
@@ -40,10 +41,12 @@ class _BaseAuthInfo:
         )
 
     def set_new_access_token(self, access_token, expires):
+        """Sets the new access token and expiration date"""
         self.access_token = access_token
         self.expires = datetime.now() + timedelta(seconds=int(expires))
 
     def clear_access_token(self):
+        """Clears an existing access token"""
         self.access_token = None
         self.expires = None
 
@@ -63,6 +66,8 @@ class _GatewayAuthInfo(_BaseAuthInfo):
 
 
 class DukeEnergyClient:
+    """The Duke Energy API client."""
+
     def __init__(
         self, email: str, password: str, session: Optional[ClientSession] = None
     ):
@@ -74,7 +79,8 @@ class DukeEnergyClient:
         self._oauth_auth_info = _OAuthAuthInfo()
         self._gateway_auth_info = _GatewayAuthInfo()
 
-    async def get_account_list(self) -> "list[Account]":
+    async def get_account_list(self) -> List[Account]:
+        """Get the list of accounts. Data is high-level summary data."""
         endpoint = "auth/account-list"
         headers = await self._get_oauth_headers()
         params = {
@@ -84,10 +90,11 @@ class DukeEnergyClient:
         resp = await self._async_request(
             "GET", CUST_API_BASE_URL, endpoint, headers=headers, params=params
         )
-        account_list = resp.get("accounts")
+        account_list: List[dict] = resp.get("accounts")
         return [Account(acc) for acc in account_list]
 
     async def get_account_details(self, account: Account) -> AccountDetails:
+        """Get detailed account data for a specific account."""
         return await self._get_account_details(
             account.src_sys_cd,
             account.src_acct_id,
@@ -119,16 +126,17 @@ class DukeEnergyClient:
         return AccountDetails(resp)
 
     def select_meter(self, meter: MeterInfo) -> None:
-        """Selects which meter will be used for gateway API calls using the MeterInfo class"""
+        """Select which meter will be used for gateway API calls."""
         self._select_meter(meter.serial_num, meter.agreement_active_date)
 
     def _select_meter(self, meter_id: str, activation_date: date) -> None:
-        """Selects which meter will be used for gateway API calls"""
+        """Selects which meter will be used for gateway API calls."""
         self._gateway_auth_info.meter_id = meter_id
         self._gateway_auth_info.activation_date = activation_date
         self._gateway_auth_info.clear_access_token()  # resets
 
     async def get_gateway_status(self) -> GatewayStatus:
+        """Gets the status of the selected gateway."""
         endpoint = "gw/gateways/status"
         headers = await self._get_gateway_auth_headers()
         resp = await self._async_request(
@@ -154,7 +162,9 @@ class DukeEnergyClient:
         )  # API expects dates to be UTC
         end_hour = range_end.astimezone(timezone.utc).strftime(dt_format)
         params = {"startHourDt": start_hour, "endHourDt": end_hour}
-        _LOGGER.debug(f"Requesting usage between {start_hour} UTC and {end_hour} UTC")
+        _LOGGER.debug(
+            "Requesting usage between %s UTC and %s UTC", start_hour, end_hour
+        )
 
         resp = await self._async_request(
             "GET", IOT_API_BASE_URL, endpoint, headers=headers, params=params
@@ -167,7 +177,7 @@ class DukeEnergyClient:
         return measurements
 
     async def _oauth_login(self) -> None:
-        """Hits the OAuth login endpoint to generate a new access token"""
+        """Hits the OAuth login endpoint to generate a new access token."""
         _LOGGER.debug("Getting new OAuth auth")
 
         endpoint = "auth/oauth2/token"
@@ -188,7 +198,7 @@ class DukeEnergyClient:
         self._oauth_auth_info.internal_user_id = resp.get("cdp_internal_user_id")
 
     async def _get_oauth_headers(self) -> dict:
-        """Get the auth headers for OAuth scoped actions - logs in if new access token is needed"""
+        """Get the auth headers for OAuth scoped actions and logs in if new access token is needed."""
         # Get a new access token if it has expired
         if self._oauth_auth_info.needs_new_access_token():
             await self._oauth_login()
@@ -224,7 +234,7 @@ class DukeEnergyClient:
         self._gateway_auth_info.id_token = resp.get("id_token")
 
     async def _get_gateway_auth_headers(self) -> dict:
-        """Get the auth headers for gateway scoped actions - logs in if new access token is needed"""
+        """Get the auth headers for gateway scoped actions and logs in if new access token is needed."""
         # Get a new access token if it has expired
         if self._gateway_auth_info.needs_new_access_token():
             await self._gateway_login()
@@ -244,7 +254,6 @@ class DukeEnergyClient:
         json: Optional[dict] = None,
     ) -> dict:
         """Make a request against the Duke Energy API."""
-
         use_running_session = self._session and not self._session.closed
 
         if use_running_session:
@@ -263,12 +272,14 @@ class DukeEnergyClient:
                     content_type=None
                 )  # not all of their APIs return the correct content_Type
                 return data
-        except asyncio.TimeoutError as te:
-            raise RequestError(f"Timed out making request [{full_url}]") from te
-        except ClientError as ce:
+        except asyncio.TimeoutError as timeout_err:
             raise RequestError(
-                f"Request failed with unexpected error [{full_url}]: {ce}"
-            ) from ce
+                f"Timed out making request [{full_url}]"
+            ) from timeout_err
+        except ClientError as client_err:
+            raise RequestError(
+                f"Request failed with unexpected error [{full_url}]: {client_err}"
+            ) from client_err
         finally:
             if not use_running_session:
                 await session.close()

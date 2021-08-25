@@ -1,12 +1,14 @@
 """Type Defintions"""
 
+from dataclasses import dataclass
 from datetime import datetime, date
 from pyduke_energy.utils import str_to_datetime, str_to_date, utc_timestamp_to_datetime
 
-"""An account as provided by account-list endpoint"""
 
-
+@dataclass
 class Account:
+    """An account as provided by account-list endpoint."""
+
     def __init__(self, data: dict):
         self.default_account: bool = data.get("defaultAccount")
         self.nickname: str = data.get("nickname")
@@ -21,10 +23,10 @@ class Account:
         self.mobile_app_compatible: bool = data.get("mobileAppCompatible")
 
 
-"""Details account data as provided by account-details endpoint"""
-
-
+@dataclass
 class AccountDetails:
+    """Details account data as provided by account-details endpoint."""
+
     def __init__(self, data: dict):
         self.customer_name: str = data.get("customerName")
         self.first_name: str = data.get("firstName")
@@ -37,15 +39,15 @@ class AccountDetails:
         )
         self.is_electric: bool = data.get("isElectric")
         self.is_gas: bool = data.get("isGas")
-        self.meter_infos: list[MeterInfo] = [
+        self.meter_infos: "list[MeterInfo]" = [
             MeterInfo(mi) for mi in data.get("meterInfo")
         ]
 
 
-"""Base address data"""
-
-
+@dataclass
 class BaseAddress:
+    """Base address data."""
+
     def __init__(self, data: dict):
         self.address_line_1: str = data.get("addressLine1")
         self.address_line_2: str = data.get("addressLine2")
@@ -54,28 +56,28 @@ class BaseAddress:
         self.zip_code: str = data.get("zipCode")
 
 
-"""Mailing address data as provided by account-details endpoint"""
-
-
+@dataclass
 class MailingAddress(BaseAddress):
+    """Mailing address data as provided by account-details endpoint."""
+
     def __init__(self, data: dict):
         super().__init__(data)
         self.address_number: str = data.get("addressNumber")
 
 
-"""Service address data as provided by account-details endpoint"""
-
-
+@dataclass
 class ServiceAddress(BaseAddress):
+    """Service address data as provided by account-details endpoint."""
+
     def __init__(self, data: dict):
         super().__init__(data)
         self.premise_id: str = data.get("premiseID")
 
 
-"""Meter data as provided by account-details endpoint"""
-
-
+@dataclass
 class MeterInfo:
+    """Meter data as provided by account-details endpoint."""
+
     def __init__(self, data: dict):
         self.meter_type: str = data.get("meterType")
         self.serial_num: str = data.get("serialNum")
@@ -88,10 +90,10 @@ class MeterInfo:
         self.transformer_number: str = data.get("transformerNumber")
 
 
-"""Gateway status data as provided by gateways/status endpoint"""
-
-
+@dataclass
 class GatewayStatus:
+    """Gateway status data as provided by gateways/status endpoint."""
+
     def __init__(self, data: dict):
         self.id: str = data.get("_id")
         self.service_state: str = data.get("serviceState")
@@ -102,10 +104,10 @@ class GatewayStatus:
         self.zigbee_mac_address: str = data.get("zgbMAC")
 
 
-"""Usage reading from the usageByHour endpoint"""
-
-
+@dataclass
 class UsageMeasurement:
+    """Usage reading from the usageByHour endpoint."""
+
     def __init__(self, data: dict):
         self.timestamp: int = int(data.get("t") / 1000)  # remove ms
         self.datetime_utc: datetime = utc_timestamp_to_datetime(self.timestamp)
