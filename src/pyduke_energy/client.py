@@ -64,6 +64,11 @@ class _GatewayAuthInfo(_BaseAuthInfo):
         self.meter_id: Optional[str] = None
         self.activation_date: Optional[datetime] = None
         self.id_token: Optional[str] = None
+        self.mqtt_username: Optional[str] = None
+        self.mqtt_password: Optional[str] = None
+        self.mqtt_clientid: Optional[str] = None
+        self.mqtt_clientid_error: Optional[str] = None
+        self.gateway: Optional[str] = None
 
 
 class DukeEnergyClient:
@@ -177,6 +182,15 @@ class DukeEnergyClient:
         measurements.sort(key=lambda x: x.timestamp)
         return measurements
 
+    async def start_smartmeter_fastpoll(self):
+        """Send request to start fastpolling."""
+        endpoint = "smartmeter/fastpoll/start"
+        headers = await self._get_gateway_auth_headers()
+        await self._async_request(
+            "GET", IOT_API_BASE_URL, endpoint, headers=headers
+        )
+        _LOGGER.debug("Smartmeter fastpoll requested")
+
     async def _oauth_login(self) -> None:
         """Hit the OAuth login endpoint to generate a new access token."""
         _LOGGER.debug("Getting new OAuth auth")
@@ -233,6 +247,11 @@ class DukeEnergyClient:
             resp.get("access_token"), resp.get("expires_in")
         )
         self._gateway_auth_info.id_token = resp.get("id_token")
+        self._gateway_auth_info.mqtt_username = resp.get("mqtt_username")
+        self._gateway_auth_info.mqtt_password = resp.get("mqtt_password")
+        self._gateway_auth_info.mqtt_clientid = resp.get("mqtt_clientId")
+        self._gateway_auth_info.mqtt_clientid_error = resp.get("mqtt_clientId_error")
+        self._gateway_auth_info.gateway = resp.get("gateway")
 
     async def _get_gateway_auth_headers(self) -> dict:
         """Get the auth headers for gateway scoped actions and logs in if new access token is needed."""
@@ -244,6 +263,18 @@ class DukeEnergyClient:
             "de-iot-id-token": self._gateway_auth_info.id_token,
         }
 
+    async def _get_mqtt_auth(self) -> dict:
+        """Get the auth headers for mqtt actions and logs in if new access token is needed."""
+        # Get a new access token if it has expired
+        if self._gateway_auth_info.needs_new_access_token():
+            await self._gateway_login()
+        return {
+            "clientid": self._gateway_auth_info.mqtt_clientid,
+            "user": self._gateway_auth_info.mqtt_username,
+            "pass": self._gateway_auth_info.mqtt_password,
+            "gateway": self._gateway_auth_info.gateway,
+        }
+        
     async def _async_request(
         self,
         method: str,
