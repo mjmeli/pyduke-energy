@@ -22,27 +22,18 @@ _LOGGER = logging.getLogger(__name__)
 
 class MyDukeRT(DukeEnergyRealtime):
     """My instance of DukeEnergyRealtime"""
-    # def on_msg(self, client, userdata, msg):
-    #     """On Message callback.
+    def on_msg(self, msg):
+        """On Message callback.
 
-    #     Parameters
-    #     ----------
-    #     client : mqtt.Client
-    #         The paho-mqtt client
-    #     userdata
-    #         user data passed by the client
-    #     msg : MQTTMessage
-    #         This is a class with members topic, payload, qos, retain
-    #     """
-    #     _LOGGER.debug("my rx msg on %s\n%s", msg.topic, json.dumps(msg.payload.decode('utf8')))
-    #     if not self.rx_msg:
-    #         _LOGGER.warning("Unexpected message: %s", msg)
-    #     else:
-    #         self.rx_msg.set_result((msg.payload.decode("utf8")))
-    pass
+        Parameters
+        ----------
+        msg : MQTTMessage
+            This is a class with members topic, payload, qos, retain
+        """
+        _LOGGER.debug("my rx msg on %s\n%s", msg.topic, json.dumps(msg.payload.decode('utf8')))
+        
 
-
-async def main() -> None:  # noqa
+async def main() -> None:
     logging.basicConfig(level=logging.DEBUG)
 
     # Pull email/password into environment variables

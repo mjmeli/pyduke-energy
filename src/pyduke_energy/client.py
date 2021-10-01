@@ -182,6 +182,28 @@ class DukeEnergyClient:
         measurements.sort(key=lambda x: x.timestamp)
         return measurements
 
+    async def get_mqtt_auth(self):
+        """Request mqtt authentication.
+
+        Returns
+        -------
+        mqtt_auth : dict
+            dictionary of mqtt authentication info
+        headers : dict
+            dictionary of smartmeter authentication info
+        """
+        try:
+            headers = await self._get_gateway_auth_headers()
+        except InputError:
+            # Assume 1st meter in 1st account # if missing
+            _LOGGER.info("No meter specified, assuming fist meter of first accnt")
+            accounts = await self.get_account_list()
+            meters = await self.get_account_details(accounts[0])
+            self.select_meter(meters.meter_infos[0])
+            headers = await self._get_gateway_auth_headers()
+        mqtt_auth = await self._get_mqtt_auth()
+        return mqtt_auth, headers
+
     async def start_smartmeter_fastpoll(self):
         """Send request to start fastpolling."""
         endpoint = "smartmeter/fastpoll/start"
@@ -274,7 +296,7 @@ class DukeEnergyClient:
             "pass": self._gateway_auth_info.mqtt_password,
             "gateway": self._gateway_auth_info.gateway,
         }
-        
+
     async def _async_request(
         self,
         method: str,
