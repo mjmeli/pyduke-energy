@@ -208,9 +208,7 @@ class DukeEnergyClient:
         """Send request to start fastpolling."""
         endpoint = "smartmeter/fastpoll/start"
         headers = await self._get_gateway_auth_headers()
-        await self._async_request(
-            "GET", IOT_API_BASE_URL, endpoint, headers=headers
-        )
+        await self._async_request("GET", IOT_API_BASE_URL, endpoint, headers=headers)
         _LOGGER.debug("Smartmeter fastpoll requested")
 
     async def _oauth_login(self) -> None:

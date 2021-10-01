@@ -6,15 +6,17 @@ import ssl
 
 import paho.mqtt.client as mqtt
 from pyduke_energy.client import DukeEnergyClient
-from pyduke_energy.const import(MQTT_HOST, MQTT_PORT)
+from pyduke_energy.const import MQTT_HOST, MQTT_PORT
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class DukeEnergyRealtime:
     """Duke Energy Realtime Client."""
+
     endpoint = "/app-mqtt"
 
-    def __init__(self,duke_energy:DukeEnergyClient):
+    def __init__(self, duke_energy: DukeEnergyClient):
         self.duke_energy = duke_energy
         self.loop = asyncio.get_event_loop()
         self.disconnected = None
@@ -39,12 +41,17 @@ class DukeEnergyRealtime:
         This will call the client.subscribe() method if the connection was successful.
         """
         if conn_res:
-            _LOGGER.error("MQTT connection error with result code: %s", mqtt.connack_string(conn_res))
+            _LOGGER.error(
+                "MQTT connection error with result code: %s",
+                mqtt.connack_string(conn_res),
+            )
         else:
-            _LOGGER.debug("MQTT connected with result code: %s", mqtt.connack_string(conn_res))
+            _LOGGER.debug(
+                "MQTT connected with result code: %s", mqtt.connack_string(conn_res)
+            )
             res = client.subscribe(self.topicid, qos=0)
             if not res:
-                _LOGGER.warning("Subscribe error: %s",mqtt.error_string(res))
+                _LOGGER.warning("Subscribe error: %s", mqtt.error_string(res))
 
     def on_sub(self, _client: mqtt.Client, _userdata, mid, granted_qos):
         """On Subscribe callback.
@@ -60,9 +67,7 @@ class DukeEnergyRealtime:
         granted_qos : literal[0, 1, 2]
             qos level granted by the server
         """
-        _LOGGER.debug(
-            "MQTT subscribed msg_id: %s qos: %s", str(mid), str(granted_qos)
-        )
+        _LOGGER.debug("MQTT subscribed msg_id: %s qos: %s", str(mid), str(granted_qos))
 
     def on_unsub(self, client: mqtt.Client, _userdata, mid):
         """On Unubscribe callback.
@@ -94,9 +99,13 @@ class DukeEnergyRealtime:
             Disconnect error code
         """
         if conn_res:
-            _LOGGER.error("MQTT disconnect error, result code: %s", mqtt.error_string(conn_res) )
+            _LOGGER.error(
+                "MQTT disconnect error, result code: %s", mqtt.error_string(conn_res)
+            )
         else:
-            _LOGGER.debug("MQTT disconnected with result code: %s", mqtt.error_string(conn_res) )
+            _LOGGER.debug(
+                "MQTT disconnected with result code: %s", mqtt.error_string(conn_res)
+            )
         self.disconnected.set_result(conn_res)
 
     def on_msg(self, msg):
@@ -107,7 +116,7 @@ class DukeEnergyRealtime:
         msg : MQTTMessage
             This is a class with members topic, payload, qos, retain
         """
-        _LOGGER.debug("rx msg on %s\n%s", msg.topic, msg.payload.decode('utf8'))
+        _LOGGER.debug("rx msg on %s\n%s", msg.topic, msg.payload.decode("utf8"))
 
     def _on_msg(self, _client: mqtt.Client, _userdata, msg):
         """Private On Message callback.
@@ -136,7 +145,12 @@ class DukeEnergyRealtime:
 
         mqtt_auth, headers = await self.duke_energy.get_mqtt_auth()
         self.topicid = f'DESH/{mqtt_auth["gateway"]}/out/sm/1/live'
-        userdata = {"mqtt_auth": mqtt_auth, "msgs": [], "nmsgs": 0, "topicid": self.topicid}
+        userdata = {
+            "mqtt_auth": mqtt_auth,
+            "msgs": [],
+            "nmsgs": 0,
+            "topicid": self.topicid,
+        }
 
         self.mqtt_client = mqtt.Client(
             mqtt_auth["clientid"], transport="websockets", userdata=userdata
@@ -148,9 +162,7 @@ class DukeEnergyRealtime:
         self.mqtt_client.on_message = self._on_msg
         self.mqtt_client.enable_logger(logger=_LOGGER)
         self.mqtt_client.ws_set_options(path=self.endpoint, headers=headers)
-        self.mqtt_client.username_pw_set(
-            mqtt_auth["user"], password=mqtt_auth["pass"]
-        )
+        self.mqtt_client.username_pw_set(mqtt_auth["user"], password=mqtt_auth["pass"])
         self.mqtt_client.reconnect_delay_set(3, 60)
         # create default ssl context to get SSLKEYLOGFILE env variable
         self.mqtt_client.tls_set_context(ssl.create_default_context())
@@ -169,8 +181,9 @@ class DukeEnergyRealtime:
         finally:
             res = self.mqtt_client.unsubscribe(self.topicid)
             if not res:
-                _LOGGER.warning("Unsubscribe error: %s",mqtt.error_string(res))
+                _LOGGER.warning("Unsubscribe error: %s", mqtt.error_string(res))
             await self.disconnected
+
 
 class MqttConnHelper:
     """Helper for asyncio mqtt."""
@@ -180,12 +193,8 @@ class MqttConnHelper:
         self.mqtt_client = mqtt_client
         self.mqtt_client.on_socket_open = self.on_socket_open
         self.mqtt_client.on_socket_close = self.on_socket_close
-        self.mqtt_client.on_socket_register_write = (
-            self.on_socket_register_write
-        )
-        self.mqtt_client.on_socket_unregister_write = (
-            self.on_socket_unregister_write
-        )
+        self.mqtt_client.on_socket_register_write = self.on_socket_register_write
+        self.mqtt_client.on_socket_unregister_write = self.on_socket_unregister_write
         self.misc = None
 
     def on_socket_open(self, client: mqtt.Client, _userdata, sock):

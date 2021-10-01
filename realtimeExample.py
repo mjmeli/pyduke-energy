@@ -20,8 +20,10 @@ PYDUKEENERGY_TEST_PASS = "PYDUKEENERGY_TEST_PASS"
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class MyDukeRT(DukeEnergyRealtime):
     """My instance of DukeEnergyRealtime"""
+
     def on_msg(self, msg):
         """On Message callback.
 
@@ -30,8 +32,10 @@ class MyDukeRT(DukeEnergyRealtime):
         msg : MQTTMessage
             This is a class with members topic, payload, qos, retain
         """
-        _LOGGER.debug("my rx msg on %s\n%s", msg.topic, json.dumps(msg.payload.decode('utf8')))
-        
+        _LOGGER.debug(
+            "my rx msg on %s\n%s", msg.topic, json.dumps(msg.payload.decode("utf8"))
+        )
+
 
 async def main() -> None:
     logging.basicConfig(level=logging.DEBUG)
@@ -57,9 +61,10 @@ async def main() -> None:
     except DukeEnergyError as err:
         print(err)
 
+
 if __name__ == "__main__":
     # ensure selector event loop is started in windows
-    if sys.platform == 'win32':
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     asyncio.run(main())
