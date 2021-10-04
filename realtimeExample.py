@@ -22,7 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class MyDukeRT(DukeEnergyRealtime):
-    """My instance of DukeEnergyRealtime"""
+    """My instance of DukeEnergyRealtime."""
 
     def on_msg(self, msg):
         """On Message callback.
@@ -32,13 +32,20 @@ class MyDukeRT(DukeEnergyRealtime):
         msg : MQTTMessage
             This is a class with members topic, payload, qos, retain
         """
-        _LOGGER.debug(
-            "my rx msg on %s\n%s", msg.topic, json.dumps(msg.payload.decode("utf8"))
-        )
+        # _LOGGER.debug(
+        #     "my rx msg on %s\n%s", msg.topic, msg.payload)
+        # )
+        tmp = json.dumps(msg.payload.decode("utf8"))
+        print(tmp)
 
 
 async def main() -> None:
-    logging.basicConfig(level=logging.DEBUG)
+    """Duke Energy Realtime data demo."""
+    logging.basicConfig(
+        format="%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s",
+        datefmt="%Y-%m-%d,%H:%M:%S",
+        level=logging.DEBUG,
+    )
 
     # Pull email/password into environment variables
     email = os.environ.get(PYDUKEENERGY_TEST_EMAIL)
@@ -55,7 +62,7 @@ async def main() -> None:
             duke_energy = DukeEnergyClient(email, password, client)
 
             duke_rt = MyDukeRT(duke_energy)
-
+            await duke_rt.select_default_meter()
             await duke_rt.connect_and_subscribe()
 
     except DukeEnergyError as err:
@@ -67,4 +74,4 @@ if __name__ == "__main__":
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-    asyncio.run(main())
+    asyncio.run(main(), debug=True)

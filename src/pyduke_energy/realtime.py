@@ -3,18 +3,18 @@
 import asyncio
 import logging
 import ssl
+import time
 
 import paho.mqtt.client as mqtt
+
 from pyduke_energy.client import DukeEnergyClient
-from pyduke_energy.const import MQTT_HOST, MQTT_PORT
+from pyduke_energy.const import FASTPOLL_TIMEOUT, MQTT_ENDPOINT, MQTT_HOST, MQTT_PORT
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class DukeEnergyRealtime:
     """Duke Energy Realtime Client."""
-
-    endpoint = "/app-mqtt"
 
     def __init__(self, duke_energy: DukeEnergyClient):
         self.duke_energy = duke_energy
@@ -53,7 +53,8 @@ class DukeEnergyRealtime:
             if not res:
                 _LOGGER.warning("Subscribe error: %s", mqtt.error_string(res))
 
-    def on_sub(self, _client: mqtt.Client, _userdata, mid, granted_qos):
+    @staticmethod
+    def on_sub(_client: mqtt.Client, _userdata, mid, granted_qos):
         """On Subscribe callback.
 
         Parameters
@@ -69,7 +70,8 @@ class DukeEnergyRealtime:
         """
         _LOGGER.debug("MQTT subscribed msg_id: %s qos: %s", str(mid), str(granted_qos))
 
-    def on_unsub(self, client: mqtt.Client, _userdata, mid):
+    @staticmethod
+    def on_unsub(client: mqtt.Client, _userdata, mid):
         """On Unubscribe callback.
 
         Parameters
@@ -100,16 +102,19 @@ class DukeEnergyRealtime:
         """
         if conn_res:
             _LOGGER.error(
-                "MQTT disconnect error, result code: %s", mqtt.error_string(conn_res)
+                "MQTT disconnect error, result code: %s (This may not be accurate)",
+                mqtt.error_string(conn_res),
             )
         else:
             _LOGGER.debug(
-                "MQTT disconnected with result code: %s", mqtt.error_string(conn_res)
+                "MQTT disconnected with result code: %s",
+                mqtt.error_string(conn_res),
             )
         self.disconnected.set_result(conn_res)
 
-    def on_msg(self, msg):
-        """On Message Callback
+    @staticmethod
+    def on_msg(msg):
+        """On Message Callback.
 
         Parameters
         ----------
@@ -138,6 +143,10 @@ class DukeEnergyRealtime:
             self.rx_msg.set_result((msg.payload.decode("utf8")))
             self.on_msg(msg)
 
+    async def select_default_meter(self):
+        """Call select_default_meter method of duke_energy client."""
+        await self.duke_energy.select_default_meter()
+
     async def connect_and_subscribe(self):
         """Mqtt client connection."""
         self.disconnected = self.loop.create_future()
@@ -161,23 +170,26 @@ class DukeEnergyRealtime:
         self.mqtt_client.on_disconnect = self.on_discon
         self.mqtt_client.on_message = self._on_msg
         self.mqtt_client.enable_logger(logger=_LOGGER)
-        self.mqtt_client.ws_set_options(path=self.endpoint, headers=headers)
+        self.mqtt_client.ws_set_options(path=MQTT_ENDPOINT, headers=headers)
         self.mqtt_client.username_pw_set(mqtt_auth["user"], password=mqtt_auth["pass"])
         self.mqtt_client.reconnect_delay_set(3, 60)
         # create default ssl context to get SSLKEYLOGFILE env variable
         self.mqtt_client.tls_set_context(ssl.create_default_context())
 
-        MqttConnHelper(self.loop, self.mqtt_client)
+        mqtt_conn = MqttConnHelper(self.loop, self.mqtt_client)
         self.mqtt_client.connect(MQTT_HOST, port=MQTT_PORT)
-        await self.duke_energy.start_smartmeter_fastpoll()
+        tstart = await self.duke_energy.start_smartmeter_fastpoll()
+
         try:
-            while True:
+            while not mqtt_conn.misc.cancelled():
+                if (
+                    time.perf_counter() - tstart > FASTPOLL_TIMEOUT
+                ):  # Call fastpoll again
+                    tstart = await self.duke_energy.start_smartmeter_fastpoll()
                 await asyncio.sleep(1)
                 self.rx_msg = self.loop.create_future()
                 await self.rx_msg
                 self.rx_msg = None
-        except KeyboardInterrupt:
-            _LOGGER.info("Listening ended by user.")
         finally:
             res = self.mqtt_client.unsubscribe(self.topicid)
             if not res:
@@ -239,6 +251,7 @@ class MqttConnHelper:
             try:
                 await asyncio.sleep(1)
             except asyncio.CancelledError:
+                _LOGGER.debug("Misc loop cancelled")
                 break
 
         _LOGGER.debug("Misc loop finished")

@@ -3,6 +3,7 @@
 import asyncio
 from datetime import date, datetime, timedelta, timezone
 import logging
+import time
 from typing import List, Optional
 from urllib.parse import urljoin
 
@@ -10,10 +11,18 @@ from aiohttp import ClientSession, ClientTimeout, FormData
 from aiohttp.client_exceptions import ClientError
 
 from pyduke_energy.const import (
+    ACCT_DET_ENDPOINT,
+    ACCT_ENDPOINT,
+    BASIC_AUTH,
     CUST_API_BASE_URL,
     CUST_PILOT_API_BASE_URL,
     DEFAULT_TIMEOUT,
+    FASTPOLL_ENDPOINT,
+    GW_STATUS_ENDPOINT,
+    GW_USAGE_ENDPOINT,
     IOT_API_BASE_URL,
+    OAUTH_ENDPOINT,
+    SMARTMETER_AUTH_ENDPOINT,
 )
 from pyduke_energy.errors import InputError, RequestError
 from pyduke_energy.types import (
@@ -87,14 +96,13 @@ class DukeEnergyClient:
 
     async def get_account_list(self) -> List[Account]:
         """Get the list of accounts. Data is high-level summary data."""
-        endpoint = "auth/account-list"
         headers = await self._get_oauth_headers()
         params = {
             "email": self._email,
             "internalUserID": self._oauth_auth_info.internal_user_id,
         }
         resp = await self._async_request(
-            "GET", CUST_API_BASE_URL, endpoint, headers=headers, params=params
+            "GET", CUST_API_BASE_URL, ACCT_ENDPOINT, headers=headers, params=params
         )
         account_list: List[dict] = resp.get("accounts")
         return [Account(acc) for acc in account_list]
@@ -115,7 +123,6 @@ class DukeEnergyClient:
         src_acct_id_2: Optional[str],
         bp_number: Optional[str],
     ) -> AccountDetails:
-        endpoint = "auth/account-details"
         headers = await self._get_oauth_headers()
         params = {
             "email": self._email,
@@ -127,7 +134,7 @@ class DukeEnergyClient:
         if bp_number:
             params["bpNumber"] = bp_number
         resp = await self._async_request(
-            "GET", CUST_API_BASE_URL, endpoint, headers=headers, params=params
+            "GET", CUST_API_BASE_URL, ACCT_DET_ENDPOINT, headers=headers, params=params
         )
         return AccountDetails(resp)
 
@@ -143,10 +150,9 @@ class DukeEnergyClient:
 
     async def get_gateway_status(self) -> GatewayStatus:
         """Get the status of the selected gateway."""
-        endpoint = "gw/gateways/status"
         headers = await self._get_gateway_auth_headers()
         resp = await self._async_request(
-            "GET", IOT_API_BASE_URL, endpoint, headers=headers
+            "GET", IOT_API_BASE_URL, GW_STATUS_ENDPOINT, headers=headers
         )
         return GatewayStatus(resp)
 
@@ -157,7 +163,6 @@ class DukeEnergyClient:
         if range_start > range_end:
             raise InputError("Start date must be before end date")
 
-        endpoint = "smartmeter/usageByHour"
         headers = await self._get_gateway_auth_headers()
 
         dt_format = (
@@ -173,7 +178,7 @@ class DukeEnergyClient:
         )
 
         resp = await self._async_request(
-            "GET", IOT_API_BASE_URL, endpoint, headers=headers, params=params
+            "GET", IOT_API_BASE_URL, GW_USAGE_ENDPOINT, headers=headers, params=params
         )
 
         # Format is a list of objects containing the measurements, one object per hour. Here we combine all.
@@ -181,6 +186,12 @@ class DukeEnergyClient:
         measurements = [UsageMeasurement(mn) for mn in raw_measurements]
         measurements.sort(key=lambda x: x.timestamp)
         return measurements
+
+    async def select_default_meter(self):
+        """Select first meter of first account."""
+        accounts = await self.get_account_list()
+        meters = await self.get_account_details(accounts[0])
+        self.select_meter(meters.meter_infos[0])
 
     async def get_mqtt_auth(self):
         """Request mqtt authentication.
@@ -192,40 +203,37 @@ class DukeEnergyClient:
         headers : dict
             dictionary of smartmeter authentication info
         """
-        try:
-            headers = await self._get_gateway_auth_headers()
-        except InputError:
-            # Assume 1st meter in 1st account # if missing
-            _LOGGER.info("No meter specified, assuming fist meter of first accnt")
-            accounts = await self.get_account_list()
-            meters = await self.get_account_details(accounts[0])
-            self.select_meter(meters.meter_infos[0])
-            headers = await self._get_gateway_auth_headers()
+        headers = await self._get_gateway_auth_headers()
         mqtt_auth = await self._get_mqtt_auth()
         return mqtt_auth, headers
 
     async def start_smartmeter_fastpoll(self):
         """Send request to start fastpolling."""
-        endpoint = "smartmeter/fastpoll/start"
         headers = await self._get_gateway_auth_headers()
-        await self._async_request("GET", IOT_API_BASE_URL, endpoint, headers=headers)
+        await self._async_request(
+            "GET", IOT_API_BASE_URL, FASTPOLL_ENDPOINT, headers=headers
+        )
+        # Not real accurate since it doesnt care about the response.
+        tstart = time.perf_counter()
         _LOGGER.debug("Smartmeter fastpoll requested")
+        return tstart
 
     async def _oauth_login(self) -> None:
         """Hit the OAuth login endpoint to generate a new access token."""
         _LOGGER.debug("Getting new OAuth auth")
 
-        endpoint = "auth/oauth2/token"
-        headers = {
-            "Authorization": "Basic UzdmNXFQR2MwcnpVZkJmcVNPak9ycGczZWtSZ3ZHSng6bW1nS2pyY1RQRHptOERtVw=="
-        }  # hard-coded from Android app
+        headers = {"Authorization": BASIC_AUTH}
         request = {
             "grant_type": "password",
             "username": self._email,
             "password": self._password,
         }
         resp = await self._async_request(
-            "POST", CUST_API_BASE_URL, endpoint, headers=headers, data=FormData(request)
+            "POST",
+            CUST_API_BASE_URL,
+            OAUTH_ENDPOINT,
+            headers=headers,
+            data=FormData(request),
         )
         self._oauth_auth_info.set_new_access_token(
             resp.get("access_token"), resp.get("expires_in")
@@ -247,7 +255,6 @@ class DukeEnergyClient:
 
         _LOGGER.debug("Getting new gateway auth")
 
-        endpoint = "smartmeter/v1/auth"
         headers = await self._get_oauth_headers()
         request = {
             "meterId": self._gateway_auth_info.meter_id,
@@ -259,7 +266,7 @@ class DukeEnergyClient:
         resp = await self._async_request(
             "POST",
             CUST_PILOT_API_BASE_URL,
-            endpoint,
+            SMARTMETER_AUTH_ENDPOINT,
             headers=headers,
             data=FormData(request),
         )
