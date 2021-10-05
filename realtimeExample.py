@@ -64,7 +64,6 @@ async def main() -> None:
             duke_rt = MyDukeRT(duke_energy)
             await duke_rt.select_default_meter()
             await duke_rt.connect_and_subscribe()
-
     except DukeEnergyError as err:
         print(err)
 
@@ -73,5 +72,7 @@ if __name__ == "__main__":
     # ensure selector event loop is started in windows
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-    asyncio.run(main(), debug=True)
+    try:
+        asyncio.run(main(), debug=True)
+    except KeyboardInterrupt:
+        _LOGGER.debug("keyboard interrupt")

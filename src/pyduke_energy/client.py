@@ -148,6 +148,12 @@ class DukeEnergyClient:
         self._gateway_auth_info.activation_date = activation_date
         self._gateway_auth_info.clear_access_token()  # resets
 
+    async def select_default_meter(self):
+        """Select first meter of first account."""
+        accounts = await self.get_account_list()
+        meters = await self.get_account_details(accounts[0])
+        self.select_meter(meters.meter_infos[0])
+
     async def get_gateway_status(self) -> GatewayStatus:
         """Get the status of the selected gateway."""
         headers = await self._get_gateway_auth_headers()
@@ -186,12 +192,6 @@ class DukeEnergyClient:
         measurements = [UsageMeasurement(mn) for mn in raw_measurements]
         measurements.sort(key=lambda x: x.timestamp)
         return measurements
-
-    async def select_default_meter(self):
-        """Select first meter of first account."""
-        accounts = await self.get_account_list()
-        meters = await self.get_account_details(accounts[0])
-        self.select_meter(meters.meter_infos[0])
 
     async def get_mqtt_auth(self):
         """Request mqtt authentication.

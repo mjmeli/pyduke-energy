@@ -154,16 +154,8 @@ class DukeEnergyRealtime:
 
         mqtt_auth, headers = await self.duke_energy.get_mqtt_auth()
         self.topicid = f'DESH/{mqtt_auth["gateway"]}/out/sm/1/live'
-        userdata = {
-            "mqtt_auth": mqtt_auth,
-            "msgs": [],
-            "nmsgs": 0,
-            "topicid": self.topicid,
-        }
 
-        self.mqtt_client = mqtt.Client(
-            mqtt_auth["clientid"], transport="websockets", userdata=userdata
-        )
+        self.mqtt_client = mqtt.Client(mqtt_auth["clientid"], transport="websockets")
         self.mqtt_client.on_connect = self.on_conn
         self.mqtt_client.on_subscribe = self.on_sub
         self.mqtt_client.on_unsubscribe = self.on_unsub
