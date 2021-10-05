@@ -178,7 +178,6 @@ class DukeEnergyRealtime:
                     time.perf_counter() - tstart > FASTPOLL_TIMEOUT
                 ):  # Call fastpoll again
                     tstart = await self.duke_energy.start_smartmeter_fastpoll()
-                await asyncio.sleep(1)
                 self.rx_msg = self.loop.create_future()
                 await self.rx_msg
                 self.rx_msg = None
