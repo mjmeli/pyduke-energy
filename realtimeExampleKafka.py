@@ -2,14 +2,16 @@
 
 # pylint: skip-file
 
+import time
 import asyncio
 import getpass
-import json
 import os
 import logging
 
 import aiohttp
 import sys
+from kafka import KafkaProducer
+from kafka.errors import KafkaTimeoutError
 
 from pyduke_energy.client import DukeEnergyClient
 from pyduke_energy.errors import DukeEnergyError
@@ -24,6 +26,18 @@ _LOGGER = logging.getLogger(__name__)
 class MyDukeRT(DukeEnergyRealtime):
     """My instance of DukeEnergyRealtime."""
 
+    def connect_kafka(self, kfktopic: str, bootstrap_servers: str = "[::1]:9092"):
+        """Open connection to Kafka."""
+        self.kfk = KafkaProducer(bootstrap_servers=bootstrap_servers)
+        self.kfktopic = kfktopic
+        _LOGGER.debug("Connected to Kafka")
+
+    def close_kafka(self):
+        """Close connection to Kafka."""
+        if self.kfk is not None:
+            self.kfk.close()
+            _LOGGER.debug("Disconnected from Kafka")
+
     def on_msg(self, msg):
         """On Message callback.
 
@@ -32,11 +46,13 @@ class MyDukeRT(DukeEnergyRealtime):
         msg : MQTTMessage
             This is a class with members topic, payload, qos, retain
         """
+        tic = time.perf_counter()
         try:
-            tmp = json.loads(msg.payload.decode("utf8"))
-            _LOGGER.debug("Recieved: %s", tmp)
-        except (ValueError, TypeError):
-            _LOGGER.warning("unexpected msg: %s", msg.payload.decode("utf8"))
+            self.kfk.send(self.kfktopic, value=msg.payload)
+            toc = time.perf_counter() - tic
+            _LOGGER.debug("logged msg to kafka in %f seconds", toc)
+        except KafkaTimeoutError as e:
+            _LOGGER.warning("Kafka Error: %s", e)
 
 
 async def main() -> None:
@@ -46,6 +62,8 @@ async def main() -> None:
         datefmt="%Y-%m-%d,%H:%M:%S",
         level=logging.DEBUG,
     )
+
+    logging.getLogger("kafka").setLevel(logging.WARNING)
 
     # Pull email/password into environment variables
     email = os.environ.get(PYDUKEENERGY_TEST_EMAIL)
@@ -62,10 +80,13 @@ async def main() -> None:
             duke_energy = DukeEnergyClient(email, password, client)
 
             duke_rt = MyDukeRT(duke_energy)
+            duke_rt.connect_kafka("smartmeter")
             await duke_rt.select_default_meter()
             await duke_rt.connect_and_subscribe()
     except DukeEnergyError as err:
         print(err)
+    finally:
+        duke_rt.close_kafka()
 
 
 if __name__ == "__main__":
@@ -73,6 +94,6 @@ if __name__ == "__main__":
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     try:
-        asyncio.run(main(), debug=True)
+        asyncio.run(main(), debug=False)
     except KeyboardInterrupt:
         _LOGGER.debug("keyboard interrupt")
