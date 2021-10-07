@@ -8,7 +8,14 @@ import time
 import paho.mqtt.client as mqtt
 
 from pyduke_energy.client import DukeEnergyClient
-from pyduke_energy.const import FASTPOLL_TIMEOUT, MQTT_ENDPOINT, MQTT_HOST, MQTT_PORT
+from pyduke_energy.const import (
+    FASTPOLL_RETRY,
+    FASTPOLL_TIMEOUT,
+    MQTT_ENDPOINT,
+    MQTT_HOST,
+    MQTT_KEEPALIVE,
+    MQTT_PORT,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,6 +27,7 @@ class DukeEnergyRealtime:
         self.duke_energy = duke_energy
         self.loop = asyncio.get_event_loop()
         self.disconnected = None
+        self.disconnecting = False
         self.rx_msg = None
         self.mqtt_client = None
         self.topicid = None
@@ -70,8 +78,7 @@ class DukeEnergyRealtime:
         """
         _LOGGER.debug("MQTT subscribed msg_id: %s qos: %s", str(mid), str(granted_qos))
 
-    @staticmethod
-    def on_unsub(client: mqtt.Client, _userdata, mid):
+    def on_unsub(self, client: mqtt.Client, _userdata, mid):
         """On Unubscribe callback.
 
         Parameters
@@ -86,6 +93,7 @@ class DukeEnergyRealtime:
         This will call the client.disconnect() method
         """
         _LOGGER.debug("MQTT unsubscribed msg_id: %s", str(mid))
+        self.disconnecting = True
         client.disconnect()
 
     def on_discon(self, _client: mqtt.Client, _userdata, conn_res):
@@ -110,7 +118,10 @@ class DukeEnergyRealtime:
                 "MQTT disconnected with result code: %s",
                 mqtt.error_string(conn_res),
             )
-        self.disconnected.set_result(conn_res)
+        if self.disconnecting:
+            self.disconnected.set_result(conn_res)
+        else:
+            self.mqtt_client.reconnect()
 
     @staticmethod
     def on_msg(msg):
@@ -169,7 +180,7 @@ class DukeEnergyRealtime:
         self.mqtt_client.tls_set_context(ssl.create_default_context())
 
         mqtt_conn = MqttConnHelper(self.loop, self.mqtt_client)
-        self.mqtt_client.connect(MQTT_HOST, port=MQTT_PORT)
+        self.mqtt_client.connect(MQTT_HOST, port=MQTT_PORT, keepalive=MQTT_KEEPALIVE)
         tstart = await self.duke_energy.start_smartmeter_fastpoll()
 
         try:
@@ -179,7 +190,10 @@ class DukeEnergyRealtime:
                 ):  # Call fastpoll again
                     tstart = await self.duke_energy.start_smartmeter_fastpoll()
                 self.rx_msg = self.loop.create_future()
-                await self.rx_msg
+                try:
+                    await asyncio.wait_for(self.rx_msg, FASTPOLL_RETRY)
+                except asyncio.TimeoutError:
+                    tstart = await self.duke_energy.start_smartmeter_fastpoll()
                 self.rx_msg = None
         finally:
             res = self.mqtt_client.unsubscribe(self.topicid)
