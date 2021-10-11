@@ -188,6 +188,19 @@ class DukeEnergyRealtime:
                 if (
                     time.perf_counter() - tstart > FASTPOLL_TIMEOUT
                 ):  # Call fastpoll again
+                    mqtt_auth_new, headers_new = await self.duke_energy.get_mqtt_auth()
+                    if mqtt_auth_new != mqtt_auth:
+                        _LOGGER.info("mqtt auth updated, reconnecting...")
+                        if mqtt_auth_new["clientid"] != mqtt_auth["clientid"]:
+                            _LOGGER.info("mqtt clientid changed")
+                        await self._reconnect(mqtt_auth_new, headers_new)
+                        mqtt_auth = mqtt_auth_new
+                        headers = headers_new
+                    if headers_new != headers:
+                        _LOGGER.info("headers updated, reconnecting...")
+                        await self._reconnect(mqtt_auth_new, headers_new)
+                        mqtt_auth = mqtt_auth_new
+                        headers = headers_new
                     tstart = await self.duke_energy.start_smartmeter_fastpoll()
                 self.rx_msg = self.loop.create_future()
                 try:
@@ -200,6 +213,24 @@ class DukeEnergyRealtime:
             if not res:
                 _LOGGER.warning("Unsubscribe error: %s", mqtt.error_string(res))
             await self.disconnected
+
+    async def _reconnect(self, mqtt_auth, headers):
+        """Reconnect in case of updated auth or headers."""
+        # Unsub and disconnect first
+        res = self.mqtt_client.unsubscribe(self.topicid)
+        if not res:
+            _LOGGER.warning("Unsubscribe error: %s", mqtt.error_string(res))
+        await self.disconnected
+        self.disconnected = self.loop.create_future()  # re-create the future
+
+        # Update mqtt_auth and header info
+        clientid = mqtt_auth["clientid"]
+        if isinstance(clientid, str):
+            clientid = clientid.encode("utf-8")
+        self.mqtt_client._client_id = clientid  # pylint: disable=W0212
+        self.mqtt_client.ws_set_options(path=MQTT_ENDPOINT, headers=headers)
+        self.mqtt_client.username_pw_set(mqtt_auth["user"], password=mqtt_auth["pass"])
+        self.mqtt_client.connect(MQTT_HOST, port=MQTT_PORT, keepalive=MQTT_KEEPALIVE)
 
 
 class MqttConnHelper:
