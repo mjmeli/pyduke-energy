@@ -206,7 +206,7 @@ class DukeEnergyRealtime:
                 try:
                     await asyncio.wait_for(self.rx_msg, FASTPOLL_RETRY)
                 except asyncio.TimeoutError:
-                    tstart = await self.duke_energy.start_smartmeter_fastpoll()
+                    await self.duke_energy.start_smartmeter_fastpoll()  # Dont reset time here in case its an auth issue
                 self.rx_msg = None
         finally:
             res = self.mqtt_client.unsubscribe(self.topicid)
