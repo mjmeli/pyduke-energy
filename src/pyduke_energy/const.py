@@ -16,7 +16,7 @@ MQTT_HOST = "app-core1.de-iot.io"
 MQTT_PORT = 443
 MQTT_ENDPOINT = "/app-mqtt"
 MQTT_KEEPALIVE = 50  # Seconds, it appears the server will disconnect after 60s idle
-FASTPOLL_TIMEOUT = 900  # seconds
+FASTPOLL_TIMEOUT = 900 - 3  # seconds
 FASTPOLL_RETRY = 60  # if no messages after this time, retry fastpoll request
 
 DEFAULT_TIMEOUT = 10  # seconds
