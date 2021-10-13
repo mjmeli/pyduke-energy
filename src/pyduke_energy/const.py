@@ -18,5 +18,6 @@ MQTT_ENDPOINT = "/app-mqtt"
 MQTT_KEEPALIVE = 50  # Seconds, it appears the server will disconnect after 60s idle
 FASTPOLL_TIMEOUT = 900 - 3  # seconds
 FASTPOLL_RETRY = 60  # if no messages after this time, retry fastpoll request
+FASTPOLL_RETRY_COUNT = 3
 
 DEFAULT_TIMEOUT = 10  # seconds

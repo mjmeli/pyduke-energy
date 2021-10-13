@@ -14,6 +14,7 @@ from kafka import KafkaProducer
 from kafka.errors import KafkaTimeoutError
 
 from pyduke_energy.client import DukeEnergyClient
+from pyduke_energy.const import FASTPOLL_TIMEOUT
 from pyduke_energy.errors import DukeEnergyError
 from pyduke_energy.realtime import DukeEnergyRealtime
 
@@ -75,18 +76,25 @@ async def main() -> None:
         )
         email = input("Email: ")
         password = getpass.getpass("Password: ")
-    try:
-        async with aiohttp.ClientSession() as client:
-            duke_energy = DukeEnergyClient(email, password, client)
 
-            duke_rt = MyDukeRT(duke_energy)
-            duke_rt.connect_kafka("smartmeter")
-            await duke_rt.select_default_meter()
-            await duke_rt.connect_and_subscribe()
-    except DukeEnergyError as err:
-        print(err)
-    finally:
-        duke_rt.close_kafka()
+    while True:
+        try:
+            async with aiohttp.ClientSession() as client:
+                duke_energy = DukeEnergyClient(email, password, client)
+
+                duke_rt = MyDukeRT(duke_energy)
+                duke_rt.connect_kafka("smartmeter")
+                await duke_rt.select_default_meter()
+                await duke_rt.connect_and_subscribe()
+        except DukeEnergyError as err:
+            # attempt sleep and retry
+            _LOGGER.warning("Error: %s\nAttempt sleep and retry.", err)
+            await duke_rt.mqtt_client.unsubscribe()
+            duke_rt.close_kafka()
+
+            time.sleep(FASTPOLL_TIMEOUT)
+        finally:
+            duke_rt.close_kafka()
 
 
 if __name__ == "__main__":

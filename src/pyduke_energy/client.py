@@ -208,7 +208,12 @@ class DukeEnergyClient:
         return mqtt_auth, headers
 
     async def start_smartmeter_fastpoll(self):
-        """Send request to start fastpolling."""
+        """Send request to start fastpolling.
+
+        Returns
+        -------
+        tstart : timestamp of request
+        """
         headers = await self._get_gateway_auth_headers()
         await self._async_request(
             "GET", IOT_API_BASE_URL, FASTPOLL_ENDPOINT, headers=headers

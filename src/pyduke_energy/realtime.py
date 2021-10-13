@@ -10,6 +10,7 @@ import paho.mqtt.client as mqtt
 from pyduke_energy.client import DukeEnergyClient
 from pyduke_energy.const import (
     FASTPOLL_RETRY,
+    FASTPOLL_RETRY_COUNT,
     FASTPOLL_TIMEOUT,
     MQTT_ENDPOINT,
     MQTT_HOST,
@@ -32,6 +33,10 @@ class DukeEnergyRealtime:
         self.rx_msg = None
         self.mqtt_client = None
         self.topicid = None
+        self.tstart = -FASTPOLL_TIMEOUT  # ensure fastpoll is requested on first run
+        self.retrycount = 0
+        self.mqtt_auth = None
+        self.headers = None
 
     def on_conn(self, client: mqtt.Client, _userdata, _flags, conn_res):
         """On Connect callback.
@@ -147,8 +152,6 @@ class DukeEnergyRealtime:
         msg : MQTTMessage
             This is a class with members topic, payload, qos, retain
         """
-        # _LOGGER.debug("rx msg on %s\n%s", msg.topic, msg.payload.decode('utf8'))
-        # _LOGGER.debug("_on_msg")
         if not self.rx_msg:
             _LOGGER.warning("Unexpected message: %s", msg)
         else:
@@ -164,70 +167,45 @@ class DukeEnergyRealtime:
         self.disconnected = self.loop.create_future()
         self.rx_msg = None
 
-        mqtt_auth, headers = await self.duke_energy.get_mqtt_auth()
-        self.topicid = f'DESH/{mqtt_auth["gateway"]}/out/sm/1/live'
+        self.mqtt_auth, self.headers = await self.duke_energy.get_mqtt_auth()
+        self.topicid = f'DESH/{self.mqtt_auth["gateway"]}/out/sm/1/live'
 
-        self.mqtt_client = mqtt.Client(mqtt_auth["clientid"], transport="websockets")
+        self.mqtt_client = mqtt.Client(
+            self.mqtt_auth["clientid"], transport="websockets"
+        )
         self.mqtt_client.on_connect = self.on_conn
         self.mqtt_client.on_subscribe = self.on_sub
         self.mqtt_client.on_unsubscribe = self.on_unsub
         self.mqtt_client.on_disconnect = self.on_discon
         self.mqtt_client.on_message = self._on_msg
         self.mqtt_client.enable_logger(logger=_LOGGER)
-        self.mqtt_client.ws_set_options(path=MQTT_ENDPOINT, headers=headers)
-        self.mqtt_client.username_pw_set(mqtt_auth["user"], password=mqtt_auth["pass"])
+        self.mqtt_client.ws_set_options(path=MQTT_ENDPOINT, headers=self.headers)
+        self.mqtt_client.username_pw_set(
+            self.mqtt_auth["user"], password=self.mqtt_auth["pass"]
+        )
         self.mqtt_client.reconnect_delay_set(3, 60)
         # create default ssl context to get SSLKEYLOGFILE env variable
         self.mqtt_client.tls_set_context(ssl.create_default_context())
 
         mqtt_conn = MqttConnHelper(self.loop, self.mqtt_client)
         self.mqtt_client.connect(MQTT_HOST, port=MQTT_PORT, keepalive=MQTT_KEEPALIVE)
-        tstart = await self.duke_energy.start_smartmeter_fastpoll()
-        retrycount = 0
         try:
             while not mqtt_conn.misc.cancelled():
-                if (
-                    time.perf_counter() - tstart > FASTPOLL_TIMEOUT
-                ):  # Call fastpoll again
-                    try:
-                        (
-                            mqtt_auth_new,
-                            headers_new,
-                        ) = await self.duke_energy.get_mqtt_auth()
-                    except RequestError:
-                        _LOGGER.warning(
-                            "Error requesting smartmeter auth, will retry after 5 seconds."
-                        )
-                        # Attempt clearing auth and try again.
-                        self.duke_energy._gateway_auth_info.clear_access_token()  # pylint: disable=W0212
-                        await asyncio.sleep(5)
-                        (
-                            mqtt_auth_new,
-                            headers_new,
-                        ) = await self.duke_energy.get_mqtt_auth()
-                    if mqtt_auth_new != mqtt_auth or headers_new != headers:
-                        _LOGGER.info("mqtt auth or headers updated, reconnecting...")
-                        await self._reconnect(mqtt_auth_new, headers_new)
-                        mqtt_auth = mqtt_auth_new
-                        headers = headers_new
-                    tstart = await self.duke_energy.start_smartmeter_fastpoll()
+                if time.perf_counter() - self.tstart > FASTPOLL_TIMEOUT:
+                    # Request fastpoll
+                    await self._fastpoll_req()
                 self.rx_msg = self.loop.create_future()
                 try:
                     await asyncio.wait_for(self.rx_msg, FASTPOLL_RETRY)
                 except asyncio.TimeoutError:
-                    retrycount += 1
-                    if retrycount < 3:
+                    self.retrycount += 1
+                    if self.retrycount <= FASTPOLL_RETRY_COUNT:
                         _LOGGER.info("Message timeout, requesting fastpoll")
-                        await self.duke_energy.start_smartmeter_fastpoll()  # Dont reset time here in case its an auth issue
+                        await self._fastpoll_req()
                     else:
                         _LOGGER.info("Multiple msg timeout, attempting reconnect")
-                        (
-                            mqtt_auth_new,
-                            headers_new,
-                        ) = await self.duke_energy.get_mqtt_auth()
-                        await self._reconnect(mqtt_auth_new, headers_new)
-                        mqtt_auth = mqtt_auth_new
-                        headers = headers_new
+                        await self._reconnect()
+                        self.retrycount = 0
                 self.rx_msg = None
         finally:
             res = self.mqtt_client.unsubscribe(self.topicid)
@@ -235,7 +213,32 @@ class DukeEnergyRealtime:
                 _LOGGER.warning("Unsubscribe error: %s", mqtt.error_string(res))
             await self.disconnected
 
-    async def _reconnect(self, mqtt_auth, headers):
+    async def _fastpoll_req(self):
+        """Request fastpoll, with auth check."""
+        try:
+            (
+                mqtt_auth_new,
+                headers_new,
+            ) = await self.duke_energy.get_mqtt_auth()
+        except RequestError:
+            _LOGGER.warning(
+                "Error requesting smartmeter auth, will retry after 5 seconds."
+            )
+            # Attempt clearing auth and try again.
+            self.duke_energy._gateway_auth_info.clear_access_token()  # pylint: disable=W0212
+            time.sleep(5)
+            (
+                mqtt_auth_new,
+                headers_new,
+            ) = await self.duke_energy.get_mqtt_auth()
+        if mqtt_auth_new != self.mqtt_auth or headers_new != self.headers:
+            _LOGGER.info("mqtt auth or headers updated, reconnecting...")
+            self.mqtt_auth = mqtt_auth_new
+            self.headers = headers_new
+            await self._reconnect()
+        self.tstart = await self.duke_energy.start_smartmeter_fastpoll()
+
+    async def _reconnect(self):
         """Reconnect in case of updated auth or headers."""
         # Unsub and disconnect first
         res = self.mqtt_client.unsubscribe(self.topicid)
@@ -245,12 +248,14 @@ class DukeEnergyRealtime:
         self.disconnected = self.loop.create_future()  # re-create the future
 
         # Update mqtt_auth and header info
-        clientid = mqtt_auth["clientid"]
+        clientid = self.mqtt_auth["clientid"]
         if isinstance(clientid, str):
             clientid = clientid.encode("utf-8")
         self.mqtt_client._client_id = clientid  # pylint: disable=W0212
-        self.mqtt_client.ws_set_options(path=MQTT_ENDPOINT, headers=headers)
-        self.mqtt_client.username_pw_set(mqtt_auth["user"], password=mqtt_auth["pass"])
+        self.mqtt_client.ws_set_options(path=MQTT_ENDPOINT, headers=self.headers)
+        self.mqtt_client.username_pw_set(
+            self.mqtt_auth["user"], password=self.mqtt_auth["pass"]
+        )
         self.mqtt_client.connect(MQTT_HOST, port=MQTT_PORT, keepalive=MQTT_KEEPALIVE)
 
 
