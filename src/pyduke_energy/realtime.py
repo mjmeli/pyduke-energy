@@ -197,6 +197,7 @@ class DukeEnergyRealtime:
                 self.rx_msg = self.loop.create_future()
                 try:
                     await asyncio.wait_for(self.rx_msg, FASTPOLL_RETRY)
+                    self.retrycount = 0
                 except asyncio.TimeoutError:
                     self.retrycount += 1
                     if self.retrycount <= FASTPOLL_RETRY_COUNT:
@@ -205,7 +206,6 @@ class DukeEnergyRealtime:
                     else:
                         _LOGGER.info("Multiple msg timeout, attempting reconnect")
                         await self._reconnect()
-                        self.retrycount = 0
                 self.rx_msg = None
         finally:
             res = self.mqtt_client.unsubscribe(self.topicid)
