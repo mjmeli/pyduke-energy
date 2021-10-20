@@ -13,6 +13,8 @@ Python3 wrapper for the unofficial Duke Energy API.
 
 Designed to work with Home Assistant. Unlikely to ever be fully implemented. The primary goal is to expose Duke Energy Gateway usage information.
 
+The library supports access to the real-time power usage implemented via an MQTT over websockets connection, or a more traditional REST API to poll near-real-time data.
+
 ## Before You Begin
 
 ### Disclaimer
@@ -35,8 +37,7 @@ It is possible to query _yesterday's_ energy usage without a gateway; however, I
 
 Some limitations I've identified:
 
-- Real-time power usage is not easily available. It is retrieved in the app via an MQTT websockets connection. I've been unable to figure out how to connect myself.
-- Non-real-time Energy usage data is down to the minute, but doesn't appear to be reported every minute and I see delays up to 15 minutes. My best guess is that the gateway only sends data to Duke Energy every 15 minutes. This is a limitation in the app as well.
+- Non-real-time Energy usage data is down to the minute, but is only updated once every 15 minutes. Meaning, the last 15 minutes of minute-by-minute data will all arrive at once after 15 minutes. My best guess is that the gateway only sends data to Duke Energy every 15 minutes. This is a limitation in the app as well.
 
 ## Usage
 
@@ -48,24 +49,40 @@ The latest version is available on PyPi.
 pip install pyduke-energy
 ```
 
-### Example Usage
+### Examples
 
-A detailed example of how to use this library is in [example.py](example.py). The quick example below shows how to retrieve usage info.
+Various usage examples can be found in the `examples/` folder of this repo.
+
+#### Example REST API Usage
+
+The quick example below shows how to retrieve non-real-time usage info using the traditional REST API.
 
 ```python
-# Meter data below can be retrieved via the API - see example.py
-meter_num = 123456789
-meter_activation_date = datetime.datetime(2021, 1, 1)
-
 async with aiohttp.ClientSession() as client:
     duke_energy = DukeEnergyClient(email, password, client)
-    duke_energy.select_meter_by_id(meter_num, meter_activation_date) # NB: can also use MeterInfo from API with select_meter()
-    usage = duke_energy.get_gateway_usage(datetime.date(2021, 1, 1), datetime.date(2021, 1, 2))
+    await duke_energy.select_default_meter() # NB: can also use MeterInfo from API with select_meter()
+    usage = await duke_energy.get_gateway_usage(datetime.date(2021, 1, 1), datetime.date(2021, 1, 2))
 ```
 
-#### Running Example
+A more detailed example is in [examples/example_rest.py](examples/example_rest.py).
 
-If you want to run the example, you might need to install extra dependencies.
+#### Example Real-time Usage
+
+Real-time usage can be retrieved using an MQTT connection. The quick example below shows how to do this using the default real-time client.
+
+```python
+async with aiohttp.ClientSession() as client:
+    duke_energy = DukeEnergyClient(email, password, client)
+    duke_rt = DukeEnergyRealtime(duke_energy)
+    await duke_rt.select_default_meter()
+    await duke_rt.connect_and_subscribe()
+```
+
+More detailed examples can be found in [examples/example_realtime.py](examples/example_realtime.py) and [examples/example_realtime_kafka.py](examples/example_realtime_kafka.py).
+
+#### Running Examples
+
+If you want to run the examples, you will need to install extra dependencies.
 
 ```bash
 pip install .[example]
