@@ -113,3 +113,14 @@ class UsageMeasurement:
         self.timestamp: int = int(data.get("t") / 1000)  # remove ms
         self.datetime_utc: datetime = utc_timestamp_to_datetime(self.timestamp)
         self.usage: float = data.get("i")  # i works for now
+
+
+@dataclass
+class RealtimeUsageMeasurement:
+    """Usage reading from the real-time data stream."""
+
+    def __init__(self, data: dict):
+        self.gateway_id: str = data.get("gw")
+        self.timestamp: int = int(data.get("t") / 1000)  # remove ms
+        self.datetime_utc: datetime = utc_timestamp_to_datetime(self.timestamp)
+        self.usage: float = data.get("da").get("i")  # in watts

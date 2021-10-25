@@ -1,9 +1,11 @@
 """Client for connecting to Duke Energy realtime stream."""
 
 import asyncio
+import json
 import logging
 import ssl
 import time
+from typing import Optional
 
 import paho.mqtt.client as mqtt
 
@@ -18,6 +20,7 @@ from pyduke_energy.const import (
     MQTT_PORT,
 )
 from pyduke_energy.errors import RequestError
+from pyduke_energy.types import RealtimeUsageMeasurement
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -157,6 +160,17 @@ class DukeEnergyRealtime:
         else:
             self.rx_msg.set_result((msg.payload.decode("utf8")))
             self.on_msg(msg)
+
+    @staticmethod
+    def msg_to_usage_measurement(msg) -> Optional[RealtimeUsageMeasurement]:
+        """Parse a raw message to the realtime usage measurement type."""
+        raw_json = msg.payload.decode("utf8")
+        try:
+            data = json.loads(raw_json)
+            measurement = RealtimeUsageMeasurement(data)
+            return measurement
+        except (ValueError, TypeError):
+            return None
 
     async def select_default_meter(self):
         """Call select_default_meter method of duke_energy client."""

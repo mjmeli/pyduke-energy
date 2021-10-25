@@ -4,11 +4,11 @@
 
 import asyncio
 import getpass
-import json
 import os
 import logging
 
 import aiohttp
+import jsonpickle
 import sys
 
 from pyduke_energy.client import DukeEnergyClient
@@ -33,8 +33,11 @@ class MyDukeRT(DukeEnergyRealtime):
             This is a class with members topic, payload, qos, retain
         """
         try:
-            tmp = json.loads(msg.payload.decode("utf8"))
-            _LOGGER.debug("Recieved: %s", tmp)
+            measurement = self.msg_to_usage_measurement(msg)
+            _LOGGER.debug(
+                "Received:\n%s",
+                jsonpickle.encode(measurement, indent=2, unpicklable=False),
+            )
         except (ValueError, TypeError):
             _LOGGER.warning("unexpected msg: %s", msg.payload.decode("utf8"))
 
