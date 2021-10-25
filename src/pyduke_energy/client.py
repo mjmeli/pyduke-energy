@@ -4,7 +4,7 @@ import asyncio
 from datetime import date, datetime, timedelta, timezone
 import logging
 import time
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from urllib.parse import urljoin
 
 from aiohttp import ClientSession, ClientTimeout, FormData
@@ -159,7 +159,7 @@ class DukeEnergyClient:
         self._gateway_auth_info.activation_date = None
         self._gateway_auth_info.clear_access_token()  # resets authentication
 
-    async def select_default_meter(self) -> MeterInfo:
+    async def select_default_meter(self) -> Tuple[MeterInfo, GatewayStatus]:
         """Find the meter that is used for the gateway by iterating through the accounts and meters."""
         account_list = await self.get_account_list()
         self._logger.debug(
@@ -169,9 +169,11 @@ class DukeEnergyClient:
         )
 
         for account in account_list:
-            found_meter = await self._check_account_for_default_meter(account)
-            if found_meter:
-                return found_meter
+            found_meter, found_gateway = await self._check_account_for_default_meter(
+                account
+            )
+            if found_meter and found_gateway:
+                return found_meter, found_gateway
 
         # No meters were found. This is an error.
         self.reset_selected_meter()  # in case any were set by the failing code above
@@ -181,7 +183,7 @@ class DukeEnergyClient:
 
     async def _check_account_for_default_meter(
         self, account: Account
-    ) -> Optional[MeterInfo]:
+    ) -> Tuple[Optional[MeterInfo], Optional[GatewayStatus]]:
         try:
             self._logger.debug("Checking account '%s' for gateway", account.src_acct_id)
             account_details = await self.get_account_details(account)
@@ -193,11 +195,12 @@ class DukeEnergyClient:
                 ),
             )
             for meter in account_details.meter_infos:
-                found_meter = await self._check_account_meter_for_default_meter(
-                    account, meter
-                )
-                if found_meter:
-                    return found_meter
+                (
+                    found_meter,
+                    found_gateway,
+                ) = await self._check_account_meter_for_default_meter(account, meter)
+                if found_meter and found_gateway:
+                    return found_meter, found_gateway
         except Exception as ex:
             # Try the next account if anything fails above
             self._logger.debug(
@@ -206,11 +209,11 @@ class DukeEnergyClient:
                 ex,
             )
 
-        return None
+        return None, None
 
     async def _check_account_meter_for_default_meter(
         self, account: Account, meter: MeterInfo
-    ) -> Optional[MeterInfo]:
+    ) -> Tuple[Optional[MeterInfo], Optional[GatewayStatus]]:
         try:
             self._logger.debug(
                 "Checking meter '%s' for gateway [meter_type=%s, is_certified_smart_meter=%s]",
@@ -233,7 +236,7 @@ class DukeEnergyClient:
                         meter.serial_num,
                         gw_status.id,
                     )
-                    return meter
+                    return meter, gw_status
 
                 self._logger.debug("No gateway status for meter '%s'", meter.serial_num)
         except Exception as ex:
@@ -245,7 +248,7 @@ class DukeEnergyClient:
                 ex,
             )
 
-        return None
+        return None, None
 
     async def get_gateway_status(self) -> GatewayStatus:
         """Get the status of the selected gateway."""

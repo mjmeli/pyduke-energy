@@ -55,9 +55,11 @@ async def main() -> None:  # noqa
                 jsonpickle.encode(account_details, indent=2, unpicklable=False)
             )
 
-            _LOGGER.info(f"Searching for default meter")
-            meter = await duke_energy.select_default_meter()
-            _LOGGER.info(f"Selected default meter {meter.serial_num}")
+            _LOGGER.info("Searching for default meter")
+            meter, gateway = await duke_energy.select_default_meter()
+            _LOGGER.info(
+                f"Selected default meter {meter.serial_num} with gateway {gateway.id}"
+            )
 
             _LOGGER.info("Getting gateway status:")
             gw_status = await duke_energy.get_gateway_status()
