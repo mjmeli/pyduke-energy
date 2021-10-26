@@ -34,7 +34,7 @@ from pyduke_energy.types import (
 )
 from pyduke_energy.utils import date_to_utc_timestamp
 
-_DEFAULT_LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)
 
 
 class _BaseAuthInfo:
@@ -84,16 +84,11 @@ class DukeEnergyClient:
     """The Duke Energy API client."""
 
     def __init__(
-        self,
-        email: str,
-        password: str,
-        session: Optional[ClientSession] = None,
-        logger: Optional[logging.Logger] = None,
+        self, email: str, password: str, session: Optional[ClientSession] = None
     ):
         self._email = email
         self._password = password
         self._session = session
-        self._logger = logger if logger else _DEFAULT_LOGGER
 
         # Authentication
         self._oauth_auth_info = _OAuthAuthInfo()
@@ -162,7 +157,7 @@ class DukeEnergyClient:
     async def select_default_meter(self) -> Tuple[MeterInfo, GatewayStatus]:
         """Find the meter that is used for the gateway by iterating through the accounts and meters."""
         account_list = await self.get_account_list()
-        self._logger.debug(
+        _LOGGER.debug(
             "Accounts to check for gateway (%d): %s",
             len(account_list),
             ",".join(["'" + a.src_acct_id + "'" for a in account_list]),
@@ -185,9 +180,9 @@ class DukeEnergyClient:
         self, account: Account
     ) -> Tuple[Optional[MeterInfo], Optional[GatewayStatus]]:
         try:
-            self._logger.debug("Checking account '%s' for gateway", account.src_acct_id)
+            _LOGGER.debug("Checking account '%s' for gateway", account.src_acct_id)
             account_details = await self.get_account_details(account)
-            self._logger.debug(
+            _LOGGER.debug(
                 "Meters to check for gateway (%d): %s",
                 len(account_details.meter_infos),
                 ",".join(
@@ -203,7 +198,7 @@ class DukeEnergyClient:
                     return found_meter, found_gateway
         except Exception as ex:
             # Try the next account if anything fails above
-            self._logger.debug(
+            _LOGGER.debug(
                 "Failed to find meter on account '%s': %s",
                 account.src_acct_id,
                 ex,
@@ -215,7 +210,7 @@ class DukeEnergyClient:
         self, account: Account, meter: MeterInfo
     ) -> Tuple[Optional[MeterInfo], Optional[GatewayStatus]]:
         try:
-            self._logger.debug(
+            _LOGGER.debug(
                 "Checking meter '%s' for gateway [meter_type=%s, is_certified_smart_meter=%s]",
                 meter.serial_num,
                 meter.meter_type,
@@ -231,17 +226,17 @@ class DukeEnergyClient:
 
                 if gw_status is not None:
                     # Found a meter
-                    self._logger.debug(
+                    _LOGGER.debug(
                         "Found meter '%s' with gateway '%s'",
                         meter.serial_num,
                         gw_status.id,
                     )
                     return meter, gw_status
 
-                self._logger.debug("No gateway status for meter '%s'", meter.serial_num)
+                _LOGGER.debug("No gateway status for meter '%s'", meter.serial_num)
         except Exception as ex:
             # Try the next meter if anything fails above
-            self._logger.debug(
+            _LOGGER.debug(
                 "Failed to check meter '%s' on account '%s': %s",
                 meter.serial_num,
                 account.src_acct_id,
@@ -275,7 +270,7 @@ class DukeEnergyClient:
         )  # API expects dates to be UTC
         end_hour = range_end.astimezone(timezone.utc).strftime(dt_format)
         params = {"startHourDt": start_hour, "endHourDt": end_hour}
-        self._logger.debug(
+        _LOGGER.debug(
             "Requesting usage between %s UTC and %s UTC", start_hour, end_hour
         )
 
@@ -316,12 +311,12 @@ class DukeEnergyClient:
         )
         # Not real accurate since it doesnt care about the response.
         tstart = time.perf_counter()
-        self._logger.debug("Smartmeter fastpoll requested")
+        _LOGGER.debug("Smartmeter fastpoll requested")
         return tstart
 
     async def _oauth_login(self) -> None:
         """Hit the OAuth login endpoint to generate a new access token."""
-        self._logger.debug("Getting new OAuth auth")
+        _LOGGER.debug("Getting new OAuth auth")
 
         headers = {"Authorization": BASIC_AUTH}
         request = {
@@ -354,7 +349,7 @@ class DukeEnergyClient:
                 "Gateway needs to be selected before calling gateway functions"
             )
 
-        self._logger.debug("Getting new gateway auth")
+        _LOGGER.debug("Getting new gateway auth")
 
         headers = await self._get_oauth_headers()
         request = {
