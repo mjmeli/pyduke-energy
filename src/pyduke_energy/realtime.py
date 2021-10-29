@@ -85,7 +85,7 @@ class DukeEnergyRealtime:
         granted_qos : literal[0, 1, 2]
             qos level granted by the server
         """
-        _LOGGER.info("MQTT subscribed msg_id: %s qos: %s", str(mid), str(granted_qos))
+        _LOGGER.debug("MQTT subscribed msg_id: %s qos: %s", str(mid), str(granted_qos))
 
     def on_unsub(self, client: mqtt.Client, _userdata, mid):
         """On Unubscribe callback.
@@ -123,7 +123,7 @@ class DukeEnergyRealtime:
                 mqtt.error_string(conn_res),
             )
         else:
-            _LOGGER.info(
+            _LOGGER.debug(
                 "MQTT disconnected with result code: %s",
                 mqtt.error_string(conn_res),
             )
@@ -215,10 +215,10 @@ class DukeEnergyRealtime:
                 except asyncio.TimeoutError:
                     self.retrycount += 1
                     if self.retrycount <= FASTPOLL_RETRY_COUNT:
-                        _LOGGER.info("Message timeout, requesting fastpoll")
+                        _LOGGER.debug("Message timeout, requesting fastpoll")
                         await self._fastpoll_req()
                     else:
-                        _LOGGER.info("Multiple msg timeout, attempting reconnect")
+                        _LOGGER.debug("Multiple msg timeout, attempting reconnect")
                         await self._reconnect()
                 self.rx_msg = None
         finally:
@@ -246,7 +246,7 @@ class DukeEnergyRealtime:
                 headers_new,
             ) = await self.duke_energy.get_mqtt_auth()
         if mqtt_auth_new != self.mqtt_auth or headers_new != self.headers:
-            _LOGGER.info("mqtt auth or headers updated, reconnecting...")
+            _LOGGER.debug("mqtt auth or headers updated, reconnecting...")
             self.mqtt_auth = mqtt_auth_new
             self.headers = headers_new
             await self._reconnect()
