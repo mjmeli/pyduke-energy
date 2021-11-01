@@ -156,7 +156,14 @@ class DukeEnergyRealtime:
             This is a class with members topic, payload, qos, retain
         """
         if not self.rx_msg:
-            _LOGGER.warning("Unexpected message: %s", msg)
+            msg_if_decoded = None
+            try:
+                msg_if_decoded = msg.payload.decode("utf8")
+            except Exception as ex:
+                msg_if_decoded = f"Could not decode message: {ex}"
+            _LOGGER.warning(
+                "Unexpected message: %s (decoded = %s)", msg, msg_if_decoded
+            )
         else:
             self.rx_msg.set_result((msg.payload.decode("utf8")))
             self.on_msg(msg)
