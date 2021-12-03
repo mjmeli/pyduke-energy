@@ -131,7 +131,8 @@ class DukeEnergyRealtime:
         if self.disconnecting:
             self.disconnected.set_result(conn_res)
         else:
-            self.mqtt_client.reconnect()
+            _LOGGER.warning("Unexpected MQTT disconnect. Attempting reconnect.")
+            self.async_mqtt_client_reconnect()
 
     @staticmethod
     def on_msg(msg):
@@ -212,18 +213,7 @@ class DukeEnergyRealtime:
         self.mqtt_client.tls_set_context(ssl.create_default_context())
 
         mqtt_conn = MqttConnHelper(self.loop, self.mqtt_client)
-
-        # Run connect() within an executor thread, since it blocks on socket
-        # connection for up to `keepalive` seconds: https://git.io/Jt5Yc
-        await self.loop.run_in_executor(
-            None,
-            functools.partial(
-                self.mqtt_client.connect,
-                MQTT_HOST,
-                port=MQTT_PORT,
-                keepalive=MQTT_KEEPALIVE,
-            ),
-        )
+        self.async_mqtt_client_connect()
 
         try:
             while not mqtt_conn.misc.cancelled():
@@ -292,7 +282,27 @@ class DukeEnergyRealtime:
         self.mqtt_client.username_pw_set(
             self.mqtt_auth["user"], password=self.mqtt_auth["pass"]
         )
-        self.mqtt_client.connect(MQTT_HOST, port=MQTT_PORT, keepalive=MQTT_KEEPALIVE)
+        self.async_mqtt_client_connect()
+
+    async def async_mqtt_client_connect(self):
+        """Run connect() in an async safe manner to avoid blocking."""
+        # Run connect() within an executor thread, since it blocks on socket
+        # connection for up to `keepalive` seconds: https://git.io/Jt5Yc
+        await self.loop.run_in_executor(
+            None,
+            functools.partial(
+                self.mqtt_client.connect,
+                MQTT_HOST,
+                port=MQTT_PORT,
+                keepalive=MQTT_KEEPALIVE,
+            ),
+        )
+
+    async def async_mqtt_client_reconnect(self):
+        """Run reconnect() in an async safe manner to avoid blocking."""
+        # Run reconnect() within an executor thread, since it blocks on socket
+        # connection for up to `keepalive` seconds: https://git.io/Jt5Yc
+        await self.loop.run_in_executor(None, self.mqtt_client.reconnect)
 
 
 class MqttConnHelper:
