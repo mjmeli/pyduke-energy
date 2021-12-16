@@ -2,11 +2,9 @@
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.193.0/containers/python-3
 {
     "name": "Python 3",
-    "image": "mcr.microsoft.com/vscode/devcontainers/python:0-3.9",
+    "image": "mcr.microsoft.com/vscode/devcontainers/python:0-3.10",
     "settings": {
-        "terminal.integrated.shell.linux": "/bin/bash",
-        "python.pythonPath": "/usr/local/bin/python",
-        "python.languageServer": "Pylance",
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
         "python.linting.enabled": true,
         "python.linting.pylintEnabled": true,
         "python.linting.flake8Enabled": true,

@@ -8,7 +8,7 @@ import ssl
 import time
 from typing import Optional
 
-import paho.mqtt.client as mqtt  # type: ignore
+import paho.mqtt.client as mqtt
 
 from pyduke_energy.client import DukeEnergyClient
 from pyduke_energy.const import (
