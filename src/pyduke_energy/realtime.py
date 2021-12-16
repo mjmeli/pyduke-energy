@@ -3,7 +3,6 @@
 # TODOs
 # 1- exponential backoff on forever run
 # 2- constant for expontential backoff delay
-# 3- catch specific exception types for forever run
 
 import asyncio
 import functools
@@ -42,7 +41,8 @@ class DukeEnergyRealtime:
         self.connected: Optional[asyncio.Future[int]] = None
         self.rx_msg: Optional[asyncio.Future[int]] = None
         self.tstart: int = 0
-        self.retry_count: int = 0
+        self.msg_retry_count: int = 0
+        self.forever_retry_count: int = 0
         self.mqtt_auth: dict = {}
         self.headers: dict = {}
         self.topic_id: str = None
@@ -219,15 +219,27 @@ class DukeEnergyRealtime:
 
     async def connect_and_subscribe_forever(self):
         """MQTT client connection that runs indefinitely and restarts the connection upon any failure."""
+        reconnect_interval = 15
         while True:
             try:
                 await self.connect_and_subscribe()
-            except Exception as error:
-                print(
-                    f'({error.__class__.__name__}) Error "{error}". Reconnecting in {3} seconds.'
+            except (MqttError, RequestError) as retry_err:
+                self.forever_retry_count += 1
+                _LOGGER.warning(
+                    "Caught retryable error '%s' in forever loop. Will attempt reconnect in %d seconds. Attempt #%d Error: %s'",
+                    retry_err.__class__.__name__,
+                    reconnect_interval,
+                    self.forever_retry_count,
+                    retry_err,
                 )
-            finally:
-                await asyncio.sleep(3)
+                await asyncio.sleep(reconnect_interval)
+            except Exception as error:
+                _LOGGER.error(
+                    "Caught non-retryable error '%s' in forever loop. Will not attempt reconnect. Error: %s",
+                    error.__class__.__name__,
+                    error,
+                )
+                raise
 
     async def connect_and_subscribe(self):
         """MQTT client connection."""
@@ -237,7 +249,7 @@ class DukeEnergyRealtime:
         self.connected = self.loop.create_future()
         self.rx_msg = None
         self.tstart = -FASTPOLL_TIMEOUT  # ensure fastpoll is requested on first run
-        self.retry_count = 0
+        self.msg_retry_count = 0
 
         self.mqtt_auth, self.headers = await self.duke_energy.get_mqtt_auth()
         self.topic_id = f'DESH/{self.mqtt_auth["gateway"]}/out/sm/1/live'
@@ -271,7 +283,8 @@ class DukeEnergyRealtime:
                 self.rx_msg = self.loop.create_future()
                 try:
                     await asyncio.wait_for(self.rx_msg, FASTPOLL_RETRY)
-                    self.retry_count = 0
+                    self.msg_retry_count = 0
+                    self.forever_retry_count = 0
                 except asyncio.TimeoutError:
                     self.retry_count += 1
                     if self.disconnected.done():
@@ -279,7 +292,7 @@ class DukeEnergyRealtime:
                             "Unexpected disconnect detected, attemping reconnect"
                         )
                         await self._reconnect()
-                    elif self.retry_count > FASTPOLL_RETRY_COUNT:
+                    elif self.msg_retry_count > FASTPOLL_RETRY_COUNT:
                         _LOGGER.debug("Multiple msg timeout, attempting reconnect")
                         await self._reconnect()
                     else:
