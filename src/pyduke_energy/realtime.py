@@ -14,11 +14,12 @@ import paho.mqtt.client as mqtt
 
 from pyduke_energy.client import DukeEnergyClient
 from pyduke_energy.const import (
-    FASTPOLL_RETRY,
-    FASTPOLL_RETRY_COUNT,
-    FASTPOLL_TIMEOUT,
+    CONNECT_TIMEOUT_SEC,
+    FASTPOLL_TIMEOUT_SEC,
     FOREVER_RETRY_BASE_MAX_MINUTES,
     FOREVER_RETRY_BASE_MIN_MINUTES,
+    MESSAGE_TIMEOUT_RETRY_COUNT,
+    MESSAGE_TIMEOUT_SEC,
     MQTT_ENDPOINT,
     MQTT_HOST,
     MQTT_KEEPALIVE,
@@ -219,7 +220,6 @@ class DukeEnergyRealtime:
 
     async def connect_and_subscribe_forever(self):
         """MQTT client connection that runs indefinitely and restarts the connection upon any failure."""
-        reconnect_interval = 15
         while True:
             try:
                 await self.connect_and_subscribe()
@@ -253,7 +253,7 @@ class DukeEnergyRealtime:
         self.disconnecting = False
         self.connected = self.loop.create_future()
         self.rx_msg = None
-        self.tstart = -FASTPOLL_TIMEOUT  # ensure fastpoll is requested on first run
+        self.tstart = -FASTPOLL_TIMEOUT_SEC  # ensure fastpoll is requested on first run
         self.msg_retry_count = 0
 
         self.mqtt_auth, self.headers = await self.duke_energy.get_mqtt_auth()
@@ -282,12 +282,12 @@ class DukeEnergyRealtime:
 
         try:
             while not mqtt_conn.misc.cancelled():
-                if time.perf_counter() - self.tstart > FASTPOLL_TIMEOUT:
+                if time.perf_counter() - self.tstart > FASTPOLL_TIMEOUT_SEC:
                     # Request fastpoll
                     await self._fastpoll_req()
                 self.rx_msg = self.loop.create_future()
                 try:
-                    await asyncio.wait_for(self.rx_msg, FASTPOLL_RETRY)
+                    await asyncio.wait_for(self.rx_msg, MESSAGE_TIMEOUT_SEC)
                     self.msg_retry_count = 0
                     self.forever_retry_count = 0
                 except asyncio.TimeoutError:
@@ -297,7 +297,7 @@ class DukeEnergyRealtime:
                             "Unexpected disconnect detected, attemping reconnect"
                         )
                         await self._reconnect()
-                    elif self.msg_retry_count > FASTPOLL_RETRY_COUNT:
+                    elif self.msg_retry_count > MESSAGE_TIMEOUT_RETRY_COUNT:
                         _LOGGER.debug("Multiple msg timeout, attempting reconnect")
                         await self._reconnect()
                     else:
@@ -373,9 +373,11 @@ class DukeEnergyRealtime:
             raise MqttError(f"Failure attempting MQTT connect: {error}") from error
 
         try:
-            await asyncio.wait_for(self.connected, 60)
+            await asyncio.wait_for(self.connected, CONNECT_TIMEOUT_SEC)
         except asyncio.TimeoutError as to_err:
-            raise MqttError("Connect operation timed out") from to_err
+            raise MqttError(
+                f"Connect operation timed out after {CONNECT_TIMEOUT_SEC} seconds"
+            ) from to_err
 
 
 class MqttConnHelper:
