@@ -343,7 +343,6 @@ class DukeEnergyRealtime:
         if not res:
             _LOGGER.warning("Unsubscribe error: %s", mqtt.error_string(res))
         await self._disconnected
-        self._disconnected = self._loop.create_future()  # re-create the future
 
         # Update mqtt_auth and header info
         client_id = self._mqtt_auth["clientid"]
@@ -358,6 +357,12 @@ class DukeEnergyRealtime:
 
     async def _async_mqtt_client_connect(self):
         """Run connect() in an async safe manner to avoid blocking."""
+        # Re-create the futures
+        if self._disconnected.done():
+            self._disconnected = self._loop.create_future()
+        if self._connected.done():
+            self._connected = self._loop.create_future()
+
         # Run connect() within an executor thread, since it blocks on socket
         # connection for up to `keepalive` seconds: https://git.io/Jt5Yc
         try:
