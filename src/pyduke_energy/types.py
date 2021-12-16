@@ -112,7 +112,8 @@ class UsageMeasurement:
     def __init__(self, data: dict):
         self.timestamp: int = int(data.get("t") / 1000)  # remove ms
         self.datetime_utc: datetime = utc_timestamp_to_datetime(self.timestamp)
-        self.usage: float = data.get("i")  # i works for now
+        self.usage: float = data.get("dr")  # dr is energy in Wh
+        self.power: float = data.get("i")  # i is average power over the interval in W
 
 
 @dataclass
