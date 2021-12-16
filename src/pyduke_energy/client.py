@@ -433,7 +433,7 @@ class DukeEnergyClient:
             ) from timeout_err
         except ClientError as client_err:
             raise RequestError(
-                f"Request failed with unexpected error [{full_url}]: {client_err}"
+                f"Request failed with unexpected error [{full_url}]: ({client_err.__class__.__name__}) {client_err}"
             ) from client_err
         finally:
             if not use_running_session:
