@@ -29,10 +29,10 @@ MESSAGE_TIMEOUT_SEC = 60
 MESSAGE_TIMEOUT_RETRY_COUNT = 3
 
 # in minutes, minimum amount of time to wait before retrying connection on forever loop
-FOREVER_RETRY_BASE_MIN_MINUTES = 1
+FOREVER_RETRY_MIN_MINUTES = 1
 
 # in minutes, maximum amount of time to wait before trying connection on forever loop
-FOREVER_RETRY_BASE_MAX_MINUTES = 60
+FOREVER_RETRY_MAX_MINUTES = 60
 
 # in seconds, how long to wait for a connection before timing out
 CONNECT_TIMEOUT_SEC = 60

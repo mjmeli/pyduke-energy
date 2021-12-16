@@ -4,7 +4,6 @@ import asyncio
 import functools
 import json
 import logging
-import math
 import socket
 import ssl
 import time
@@ -16,8 +15,8 @@ from pyduke_energy.client import DukeEnergyClient
 from pyduke_energy.const import (
     CONNECT_TIMEOUT_SEC,
     FASTPOLL_TIMEOUT_SEC,
-    FOREVER_RETRY_BASE_MAX_MINUTES,
-    FOREVER_RETRY_BASE_MIN_MINUTES,
+    FOREVER_RETRY_MAX_MINUTES,
+    FOREVER_RETRY_MIN_MINUTES,
     MESSAGE_TIMEOUT_RETRY_COUNT,
     MESSAGE_TIMEOUT_SEC,
     MQTT_ENDPOINT,
@@ -227,8 +226,8 @@ class DukeEnergyRealtime:
                 # Exponential backoff of retry interval, maxing out at FOREVER_RETRY_BASE_MAX_MINUTES
                 self._forever_retry_count += 1
                 reconnect_interval = min(
-                    math.pow(FOREVER_RETRY_BASE_MIN_MINUTES, self._forever_retry_count),
-                    FOREVER_RETRY_BASE_MAX_MINUTES,
+                    FOREVER_RETRY_MIN_MINUTES * 2 ** (self._forever_retry_count - 1),
+                    FOREVER_RETRY_MAX_MINUTES,
                 )
                 _LOGGER.warning(
                     "Caught retryable error '%s' in forever loop. Will attempt reconnect in %d minute(s). Attempt #%d. Error: %s'",
@@ -237,7 +236,7 @@ class DukeEnergyRealtime:
                     self._forever_retry_count,
                     retry_err,
                 )
-                await asyncio.sleep(reconnect_interval)
+                await asyncio.sleep(reconnect_interval * 60)  # interval is in minutes
             except Exception as error:
                 _LOGGER.error(
                     "Caught non-retryable error '%s' in forever loop. Will not attempt reconnect. Error: %s",
