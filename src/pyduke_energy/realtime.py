@@ -1,13 +1,11 @@
 """Client for connecting to Duke Energy realtime stream."""
 
-# TODOs
-# 1- exponential backoff on forever run
-# 2- constant for expontential backoff delay
-
 import asyncio
 import functools
 import json
 import logging
+import math
+import socket
 import ssl
 import time
 from typing import Any, Dict, Optional
@@ -19,6 +17,8 @@ from pyduke_energy.const import (
     FASTPOLL_RETRY,
     FASTPOLL_RETRY_COUNT,
     FASTPOLL_TIMEOUT,
+    FOREVER_RETRY_BASE_MAX_MINUTES,
+    FOREVER_RETRY_BASE_MIN_MINUTES,
     MQTT_ENDPOINT,
     MQTT_HOST,
     MQTT_KEEPALIVE,
@@ -224,9 +224,14 @@ class DukeEnergyRealtime:
             try:
                 await self.connect_and_subscribe()
             except (MqttError, RequestError) as retry_err:
+                # Exponential backoff of retry interval, maxing out at FOREVER_RETRY_BASE_MAX_MINUTES
                 self.forever_retry_count += 1
+                reconnect_interval = min(
+                    math.pow(FOREVER_RETRY_BASE_MIN_MINUTES, self.forever_retry_count),
+                    FOREVER_RETRY_BASE_MAX_MINUTES,
+                )
                 _LOGGER.warning(
-                    "Caught retryable error '%s' in forever loop. Will attempt reconnect in %d seconds. Attempt #%d Error: %s'",
+                    "Caught retryable error '%s' in forever loop. Will attempt reconnect in %d minute(s). Attempt #%d. Error: %s'",
                     retry_err.__class__.__name__,
                     reconnect_interval,
                     self.forever_retry_count,
@@ -273,7 +278,7 @@ class DukeEnergyRealtime:
         self.mqtt_client.tls_set_context(ssl.create_default_context())
 
         mqtt_conn = MqttConnHelper(self.loop, self.mqtt_client)
-        await self.async_mqtt_client_connect()
+        await self._async_mqtt_client_connect()
 
         try:
             while not mqtt_conn.misc.cancelled():
@@ -340,29 +345,33 @@ class DukeEnergyRealtime:
         self.disconnected = self.loop.create_future()  # re-create the future
 
         # Update mqtt_auth and header info
-        clientid = self.mqtt_auth["clientid"]
-        if isinstance(clientid, str):
-            clientid = clientid.encode("utf-8")
-        self.mqtt_client._client_id = clientid  # pylint: disable=W0212
+        client_id = self.mqtt_auth["clientid"]
+        if isinstance(client_id, str):
+            client_id = client_id.encode("utf-8")
+        self.mqtt_client._client_id = client_id  # pylint: disable=W0212
         self.mqtt_client.ws_set_options(path=MQTT_ENDPOINT, headers=self.headers)
         self.mqtt_client.username_pw_set(
             self.mqtt_auth["user"], password=self.mqtt_auth["pass"]
         )
-        await self.async_mqtt_client_connect()
+        await self._async_mqtt_client_connect()
 
-    async def async_mqtt_client_connect(self):
+    async def _async_mqtt_client_connect(self):
         """Run connect() in an async safe manner to avoid blocking."""
         # Run connect() within an executor thread, since it blocks on socket
         # connection for up to `keepalive` seconds: https://git.io/Jt5Yc
-        await self.loop.run_in_executor(
-            None,
-            functools.partial(
-                self.mqtt_client.connect,
-                MQTT_HOST,
-                port=MQTT_PORT,
-                keepalive=MQTT_KEEPALIVE,
-            ),
-        )
+        try:
+            await self.loop.run_in_executor(
+                None,
+                functools.partial(
+                    self.mqtt_client.connect,
+                    MQTT_HOST,
+                    port=MQTT_PORT,
+                    keepalive=MQTT_KEEPALIVE,
+                ),
+            )
+        except (socket.error, OSError, mqtt.WebsocketConnectionError) as error:
+            raise MqttError(f"Failure attempting MQTT connect: {error}") from error
+
         try:
             await asyncio.wait_for(self.connected, 60)
         except asyncio.TimeoutError as to_err:

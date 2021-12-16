@@ -20,4 +20,10 @@ FASTPOLL_TIMEOUT = 900 - 3  # seconds
 FASTPOLL_RETRY = 60  # if no messages after this time, retry fastpoll request
 FASTPOLL_RETRY_COUNT = 3
 
+# in minutes, minimum amount of time to wait before retrying connection on forever loop
+FOREVER_RETRY_BASE_MIN_MINUTES = 1
+
+# in minutes, maximum amount of time to wait before trying connection on forever loop
+FOREVER_RETRY_BASE_MAX_MINUTES = 60
+
 DEFAULT_TIMEOUT = 10  # seconds
