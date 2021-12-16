@@ -24,7 +24,7 @@ _LOGGER = logging.getLogger(__name__)
 class MyDukeRT(DukeEnergyRealtime):
     """My instance of DukeEnergyRealtime."""
 
-    def on_msg(self, msg):
+    def on_message(self, msg):
         """On Message callback.
 
         Parameters

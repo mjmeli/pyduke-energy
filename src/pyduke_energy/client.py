@@ -75,8 +75,8 @@ class _GatewayAuthInfo(_BaseAuthInfo):
         self.id_token: Optional[str] = None
         self.mqtt_username: Optional[str] = None
         self.mqtt_password: Optional[str] = None
-        self.mqtt_clientid: Optional[str] = None
-        self.mqtt_clientid_error: Optional[str] = None
+        self.mqtt_client_id: Optional[str] = None
+        self.mqtt_client_id_error: Optional[str] = None
         self.gateway: Optional[str] = None
 
 
@@ -372,8 +372,8 @@ class DukeEnergyClient:
         self._gateway_auth_info.id_token = resp.get("id_token")
         self._gateway_auth_info.mqtt_username = resp.get("mqtt_username")
         self._gateway_auth_info.mqtt_password = resp.get("mqtt_password")
-        self._gateway_auth_info.mqtt_clientid = resp.get("mqtt_clientId")
-        self._gateway_auth_info.mqtt_clientid_error = resp.get("mqtt_clientId_error")
+        self._gateway_auth_info.mqtt_client_id = resp.get("mqtt_clientId")
+        self._gateway_auth_info.mqtt_client_id_error = resp.get("mqtt_clientId_error")
         self._gateway_auth_info.gateway = resp.get("gateway")
 
     async def _get_gateway_auth_headers(self) -> dict:
@@ -392,7 +392,7 @@ class DukeEnergyClient:
         if self._gateway_auth_info.needs_new_access_token():
             await self._gateway_login()
         return {
-            "clientid": self._gateway_auth_info.mqtt_clientid,
+            "clientid": self._gateway_auth_info.mqtt_client_id,
             "user": self._gateway_auth_info.mqtt_username,
             "pass": self._gateway_auth_info.mqtt_password,
             "gateway": self._gateway_auth_info.gateway,

@@ -14,7 +14,7 @@ from kafka import KafkaProducer
 from kafka.errors import KafkaTimeoutError
 
 from pyduke_energy.client import DukeEnergyClient
-from pyduke_energy.const import FASTPOLL_TIMEOUT
+from pyduke_energy.const import FASTPOLL_TIMEOUT_SEC
 from pyduke_energy.errors import DukeEnergyError
 from pyduke_energy.realtime import DukeEnergyRealtime
 
@@ -39,7 +39,7 @@ class MyDukeRT(DukeEnergyRealtime):
             self.kfk.close()
             _LOGGER.debug("Disconnected from Kafka")
 
-    def on_msg(self, msg):
+    def on_message(self, msg):
         """On Message callback.
 
         Parameters
@@ -85,14 +85,14 @@ async def main() -> None:
                 duke_rt = MyDukeRT(duke_energy)
                 duke_rt.connect_kafka("smartmeter")
                 await duke_rt.select_default_meter()
-                await duke_rt.connect_and_subscribe()
+                await duke_rt.connect_and_subscribe_forever()
         except DukeEnergyError as err:
             # attempt sleep and retry
             _LOGGER.warning("Error: %s\nAttempt sleep and retry.", err)
             await duke_rt.mqtt_client.unsubscribe()
             duke_rt.close_kafka()
 
-            time.sleep(FASTPOLL_TIMEOUT)
+            time.sleep(FASTPOLL_TIMEOUT_SEC)
         finally:
             duke_rt.close_kafka()
 
