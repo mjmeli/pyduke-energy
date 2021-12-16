@@ -10,7 +10,7 @@ import json
 import logging
 import ssl
 import time
-from typing import Optional, Any, Dict
+from typing import Any, Dict, Optional
 
 import paho.mqtt.client as mqtt
 
@@ -24,7 +24,7 @@ from pyduke_energy.const import (
     MQTT_KEEPALIVE,
     MQTT_PORT,
 )
-from pyduke_energy.errors import MqttCodeError, RequestError, MqttError
+from pyduke_energy.errors import MqttCodeError, MqttError, RequestError
 from pyduke_energy.types import RealtimeUsageMeasurement
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,10 +36,10 @@ class DukeEnergyRealtime:
     def __init__(self, duke_energy: DukeEnergyClient):
         self.duke_energy = duke_energy
         self.loop = asyncio.get_event_loop()
-        self.disconnected: Optional[asyncio.Future[int]] = None
+        self.disconnected: Optional["asyncio.Future[int]"] = None
         self.disconnecting: bool = False
-        self.connected: Optional[asyncio.Future[int]] = None
-        self.rx_msg: Optional[asyncio.Future[int]] = None
+        self.connected: Optional["asyncio.Future[int]"] = None
+        self.rx_msg: Optional["asyncio.Future[int]"] = None
         self.tstart: int = 0
         self.msg_retry_count: int = 0
         self.forever_retry_count: int = 0
@@ -286,7 +286,7 @@ class DukeEnergyRealtime:
                     self.msg_retry_count = 0
                     self.forever_retry_count = 0
                 except asyncio.TimeoutError:
-                    self.retry_count += 1
+                    self.msg_retry_count += 1
                     if self.disconnected.done():
                         _LOGGER.debug(
                             "Unexpected disconnect detected, attemping reconnect"

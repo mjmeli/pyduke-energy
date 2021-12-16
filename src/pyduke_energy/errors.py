@@ -1,6 +1,7 @@
 """Error Types."""
 
 from typing import Any, Union
+
 import paho.mqtt.client as mqtt
 
 
@@ -32,7 +33,6 @@ class MqttCodeError(MqttError):
         """Output a formatted string for the error code."""
         if isinstance(self.code, mqtt.ReasonCodes):
             return f"{self.operation}: ({self.code.value}) {str(self.code)}"
-        elif isinstance(self.code, int):
+        if isinstance(self.code, int):
             return f"{self.operation}: ({self.code}) {mqtt.error_string(self.code)}"
-        else:
-            return f"{self.operation}: ({self.code}) {super().__str__()}"
+        return f"{self.operation}: ({self.code}) {super().__str__()}"
