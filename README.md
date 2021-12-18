@@ -75,7 +75,7 @@ async with aiohttp.ClientSession() as client:
     duke_energy = DukeEnergyClient(email, password, client)
     duke_rt = DukeEnergyRealtime(duke_energy)
     await duke_rt.select_default_meter()
-    await duke_rt.connect_and_subscribe()
+    await duke_rt.connect_and_subscribe_forever()
 ```
 
 More detailed examples can be found in [examples/example_realtime.py](examples/example_realtime.py) and [examples/example_realtime_kafka.py](examples/example_realtime_kafka.py).
@@ -123,7 +123,7 @@ tox
 To run just the tests:
 
 ```bash
-tox -e py39
+tox -e py310
 ```
 
 To run just the linting:
