@@ -24,7 +24,7 @@ _LOGGER = logging.getLogger(__name__)
 class MyDukeRT(DukeEnergyRealtime):
     """My instance of DukeEnergyRealtime."""
 
-    def on_msg(self, msg):
+    def on_message(self, msg):
         """On Message callback.
 
         Parameters
@@ -66,7 +66,7 @@ async def main() -> None:
 
             duke_rt = MyDukeRT(duke_energy)
             await duke_rt.select_default_meter()
-            await duke_rt.connect_and_subscribe()
+            await duke_rt.connect_and_subscribe_forever()
     except DukeEnergyError as err:
         print(err)
 
