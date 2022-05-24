@@ -132,6 +132,16 @@ To run just the linting:
 tox -e lint
 ```
 
+### Android App Debugging
+
+If you want to debug requests via the Android app, the following general approach works well for me.
+
+1. Install [HTTP Toolkit](https://httptoolkit.tech/) on your computer.
+2. Set up Android Studio so that you can use an emulator through it.
+3. Start Android Studio emulator and use HTTP Toolkit to connect to it via ADB. Make sure to set up the HTTPS request intercepting.
+4. Install Duke Energy APK on the emulator. You can download an `xapk` file from a site like APKPure. To install an `xapk` file on an emulator, extract the `xapk` file using something like WinRAR and drag the inside `apk` file to the emulator.
+5. Start Duke Energy app on the emulator and logs should now be requested in your HTTP Toolkit app.
+
 [black]: https://github.com/psf/black
 [black-shield]: https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge
 [commits-shield]: https://img.shields.io/github/commit-activity/y/mjmeli/pyduke-energy.svg?style=for-the-badge
