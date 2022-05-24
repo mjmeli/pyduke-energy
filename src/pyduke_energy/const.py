@@ -5,7 +5,7 @@ CUST_PILOT_API_BASE_URL = "https://cust-pilot-api.duke-energy.com/"
 IOT_API_BASE_URL = "https://app-core1.de-iot.io/rest/cloud/"
 FASTPOLL_ENDPOINT = "smartmeter/fastpoll/start"
 OAUTH_ENDPOINT = "auth/oauth2/token"
-BASIC_AUTH = "Basic UzdmNXFQR2MwcnpVZkJmcVNPak9ycGczZWtSZ3ZHSng6bW1nS2pyY1RQRHptOERtVw=="  # hard-coded from Android app
+BASIC_AUTH = "Basic NEdtR3J1M085TEFIV3BMNjVjbWpyZDhtQ1VKZU5XTVo6OWFyZVZoZlM3R2N4UmgzWA=="  # hard-coded from Android app
 SMARTMETER_AUTH_ENDPOINT = "smartmeter/v1/auth"
 ACCT_ENDPOINT = "auth/account-list"
 ACCT_DET_ENDPOINT = "auth/account-details"
