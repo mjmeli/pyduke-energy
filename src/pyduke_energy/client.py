@@ -105,7 +105,7 @@ class DukeEnergyClient:
             "GET", CUST_API_BASE_URL, ACCT_ENDPOINT, headers=headers, params=params
         )
         account_list: List[dict] = resp.get("accounts")
-        return [Account(acc) for acc in account_list]
+        return [Account(acc, resp) for acc in account_list]
 
     async def get_account_details(self, account: Account) -> AccountDetails:
         """Get detailed account data for a specific account."""
@@ -113,7 +113,8 @@ class DukeEnergyClient:
             account.src_sys_cd,
             account.src_acct_id,
             account.src_acct_id_2,
-            account.bp_number,
+            account.primary_bp_number,
+            account.related_bp_number,
         )
 
     async def _get_account_details(
@@ -121,7 +122,8 @@ class DukeEnergyClient:
         src_sys_cd: str,
         src_acct_id: str,
         src_acct_id_2: Optional[str],
-        bp_number: Optional[str],
+        primary_bp_number: Optional[str],
+        related_bp_number: Optional[str],
     ) -> AccountDetails:
         headers = await self._get_oauth_headers()
         params = {
@@ -131,8 +133,10 @@ class DukeEnergyClient:
         }
         if src_acct_id_2:
             params["srcAcctId2"] = src_acct_id_2
-        if bp_number:
-            params["bpNumber"] = bp_number
+        if primary_bp_number:
+            params["primaryBpNumber"] = primary_bp_number
+        if related_bp_number:
+            params["relatedBpNumber"] = related_bp_number
         resp = await self._async_request(
             "GET", CUST_API_BASE_URL, ACCT_DET_ENDPOINT, headers=headers, params=params
         )
