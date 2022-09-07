@@ -10,18 +10,21 @@ from pyduke_energy.utils import str_to_date, str_to_datetime, utc_timestamp_to_d
 class Account:
     """An account as provided by account-list endpoint."""
 
-    def __init__(self, data: dict):
+    def __init__(self, data: dict, common_data: dict):
         self.default_account: bool = data.get("defaultAccount")
         self.nickname: str = data.get("nickname")
         self.account_number: str = data.get("accountNumber")
         self.src_acct_id: str = data.get("srcAcctId")
         self.src_acct_id_2: str = data.get("srcAcctId2")
         self.src_sys_cd: str = data.get("srcSysCd")
-        self.bp_number: str = data.get("primaryBpNumber")
+        self.primary_bp_number: str = data.get("primaryBpNumber")
         self.status: str = data.get("status")
         self.role: str = data.get("role")
         self.service_address: str = data.get("serviceAddress")
         self.mobile_app_compatible: bool = data.get("mobileAppCompatible")
+
+        # Data common to all accounts
+        self.related_bp_number: str = common_data.get("relatedBpNumber")
 
 
 @dataclass
