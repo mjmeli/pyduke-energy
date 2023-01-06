@@ -36,7 +36,7 @@ MESSAGE_TIMEOUT_SEC = 60
 MESSAGE_TIMEOUT_RETRY_COUNT = 3
 
 # number of times a message timeout can occur before we totally give up (allow 2 fastpolls)
-MESSAGE_TIMEOUT_GIVE_UP_COUNT = ((FASTPOLL_TIMEOUT_MIN * 60) / MESSAGE_TIMEOUT_SEC) + 1
+MESSAGE_TIMEOUT_GIVE_UP_COUNT = 2 * FASTPOLL_TIMEOUT_MIN * 60 / MESSAGE_TIMEOUT_SEC
 
 # in minutes, minimum amount of time to wait before retrying connection on forever loop
 FOREVER_RETRY_MIN_MINUTES = 1
