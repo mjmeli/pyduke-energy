@@ -86,7 +86,7 @@ If you want to run the examples, you will need to install extra dependencies.
 
 ```bash
 pip install .[example]
-python example.py
+python examples/example_rest.py
 ```
 
 ## Development
