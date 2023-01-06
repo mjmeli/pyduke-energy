@@ -23,8 +23,11 @@ MQTT_PORT = 443
 MQTT_ENDPOINT = "/app-mqtt"
 MQTT_KEEPALIVE = 50  # Seconds, it appears the server will disconnect after 60s idle
 
+# in minutes, how long a fastpoll interval is
+FASTPOLL_TIMEOUT_MIN = 15
+
 # in seconds, how long to until the fastpoll request has timed out and a new one needs to be made
-FASTPOLL_TIMEOUT_SEC = 900 - 3  # seconds
+FASTPOLL_TIMEOUT_SEC = (FASTPOLL_TIMEOUT_MIN * 60) - 3  # seconds
 
 # in seconds, how long to wait for a message before retrying fastpoll or reconnecting
 MESSAGE_TIMEOUT_SEC = 60
@@ -32,8 +35,8 @@ MESSAGE_TIMEOUT_SEC = 60
 # number of times a message timeout can occur before just reconnecting
 MESSAGE_TIMEOUT_RETRY_COUNT = 3
 
-# number of times a message timeout can occur before we totally give up
-MESSAGE_TIMEOUT_GIVE_UP_COUNT = 10
+# number of times a message timeout can occur before we totally give up (allow 2 fastpolls)
+MESSAGE_TIMEOUT_GIVE_UP_COUNT = ((FASTPOLL_TIMEOUT_MIN * 60) / MESSAGE_TIMEOUT_SEC) + 1
 
 # in minutes, minimum amount of time to wait before retrying connection on forever loop
 FOREVER_RETRY_MIN_MINUTES = 1
