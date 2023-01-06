@@ -86,7 +86,7 @@ If you want to run the examples, you will need to install extra dependencies.
 
 ```bash
 pip install .[example]
-python example.py
+python examples/example_rest.py
 ```
 
 ## Development
@@ -150,7 +150,7 @@ If you want to debug requests via the Android app, the following general approac
 [maintenance-shield]: https://img.shields.io/badge/maintainer-%40mjmeli-blue.svg?style=for-the-badge
 [pypi-shield]: https://img.shields.io/pypi/v/pyduke-energy?style=for-the-badge
 [pypi]: https://pypi.org/project/pyduke-energy/
-[build-shield]: https://img.shields.io/github/workflow/status/mjmeli/pyduke-energy/Tests?style=for-the-badge
+[build-shield]: https://img.shields.io/github/actions/workflow/status/mjmeli/pyduke-energy/tests.yml?branch=main&style=for-the-badge
 [build]: https://github.com/mjmeli/pyduke-energy/actions/workflows/tests.yaml
 [language-shield]: https://img.shields.io/github/languages/top/mjmeli/pyduke-energy?style=for-the-badge
 [language]: https://github.com/mjmeli/ha-duke-energy-gateway/search?l=python

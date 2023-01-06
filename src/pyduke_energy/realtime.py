@@ -17,6 +17,7 @@ from pyduke_energy.const import (
     FASTPOLL_TIMEOUT_SEC,
     FOREVER_RETRY_MAX_MINUTES,
     FOREVER_RETRY_MIN_MINUTES,
+    MESSAGE_TIMEOUT_GIVE_UP_COUNT,
     MESSAGE_TIMEOUT_RETRY_COUNT,
     MESSAGE_TIMEOUT_SEC,
     MQTT_ENDPOINT,
@@ -291,13 +292,18 @@ class DukeEnergyRealtime:
                     await asyncio.wait_for(self._rx_msg, MESSAGE_TIMEOUT_SEC)
                     self._msg_retry_count = 0
                     self._forever_retry_count = 0
-                except asyncio.TimeoutError:
+                except asyncio.TimeoutError as toex:
                     self._msg_retry_count += 1
                     if self._disconnected.done():
                         _LOGGER.debug(
                             "Unexpected disconnect detected, attemping reconnect"
                         )
                         await self._reconnect()
+                    elif self._msg_retry_count > MESSAGE_TIMEOUT_GIVE_UP_COUNT:
+                        _LOGGER.error("Too many msg timeouts, giving up")
+                        raise MqttError(
+                            "Reached timeout limit for reconnecting to MQTT"
+                        ) from toex
                     elif self._msg_retry_count > MESSAGE_TIMEOUT_RETRY_COUNT:
                         _LOGGER.debug("Multiple msg timeout, attempting reconnect")
                         await self._reconnect()
