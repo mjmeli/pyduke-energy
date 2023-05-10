@@ -13,7 +13,7 @@ GW_USAGE_ENDPOINT = "smartmeter/usageByHour"
 
 # hard-coded from Android app
 BASIC_AUTH = (
-    "Basic NEdtR3J1M085TEFIV3BMNjVjbWpyZDhtQ1VKZU5XTVo6OWFyZVZoZlM3R2N4UmgzWA=="
+    "Basic ZEJEMnl0TE1IYm9UMjBNNDRkQVRqM29JelNoUG15NGQ6ODZ0QW1zVXFZcmV3R3N2WA=="
 )
 
 DEFAULT_TIMEOUT = 10  # seconds
