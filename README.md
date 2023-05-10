@@ -15,6 +15,10 @@ Designed to work with Home Assistant. Unlikely to ever be fully implemented. The
 
 The library supports access to the real-time power usage implemented via an MQTT over websockets connection, or a more traditional REST API to poll near-real-time data.
 
+## IMPORTANT - Deprecation Warning
+
+**Duke Energy is shutting down the Gateway pilot program at the end of June. This library will stop functioning and will be deprecated.**
+
 ## Before You Begin
 
 ### Disclaimer
