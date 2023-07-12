@@ -1,3 +1,7 @@
+## IMPORTANT - DEPRECATED
+
+Duke Energy shut down the Gateway pilot program at the end of June 2023. This integration has stopped functioning and is deprecated.
+
 # pyDuke-Energy
 
 [![PyPi Project][pypi-shield]][pypi]
@@ -14,10 +18,6 @@ Python3 wrapper for the unofficial Duke Energy API.
 Designed to work with Home Assistant. Unlikely to ever be fully implemented. The primary goal is to expose Duke Energy Gateway usage information.
 
 The library supports access to the real-time power usage implemented via an MQTT over websockets connection, or a more traditional REST API to poll near-real-time data.
-
-## IMPORTANT - Deprecation Warning
-
-**Duke Energy is shutting down the Gateway pilot program at the end of June. This library will stop functioning and will be deprecated.**
 
 ## Before You Begin
 
